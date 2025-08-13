@@ -12,13 +12,28 @@ namespace helpers::dwm {
         return true;
     }
 
-    bool GetDwmVisualOffsets(HWND hwnd, int& offL, int& offT, int& offR, int& offB) {
+    bool GetDwmVisualOffsets(HWND hwnd, RECT& offsets) {
         RECT wr{}, vr{};
-        if (!dwm::GetVisual(hwnd, wr, vr)) return false;
-        offL = vr.left - wr.left;
-        offT = vr.top - wr.top;
-        offR = wr.right - vr.right;
-        offB = wr.bottom - vr.bottom;
+        if (!GetVisual(hwnd, wr, vr)) return false;
+        offsets.left = vr.left - wr.left;
+        offsets.top = vr.top - wr.top;
+        offsets.right = vr.right - wr.right;
+        offsets.bottom = vr.bottom - wr.bottom;
+        return true;
+    }
+
+    bool GetMinMax(HWND hwnd, RECT& mm) {
+        if (!IsWindow(hwnd)) return false;
+        MINMAXINFO mmi{};
+        SendMessageW(hwnd, WM_GETMINMAXINFO, 0, reinterpret_cast<LPARAM>(&mmi));
+        const int minW = (mmi.ptMinTrackSize.x > 0) ? mmi.ptMinTrackSize.x : 100;
+        const int minH = (mmi.ptMinTrackSize.y > 0) ? mmi.ptMinTrackSize.y : 38;
+        const int maxW = (mmi.ptMaxTrackSize.x > 0) ? mmi.ptMaxTrackSize.x : INT_MAX;
+        const int maxH = (mmi.ptMaxTrackSize.y > 0) ? mmi.ptMaxTrackSize.y : INT_MAX;
+        mm.left = minW;
+        mm.top = minH;
+        mm.right = maxW;
+        mm.bottom = maxH;
         return true;
     }
 

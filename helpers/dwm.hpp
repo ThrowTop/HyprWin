@@ -18,7 +18,13 @@ namespace helpers::dwm {
     }
 
     bool GetVisual(HWND hwnd, RECT& win, RECT& vis);
-    bool GetDwmVisualOffsets(HWND hwnd, int& offL, int& offT, int& offR, int& offB);
+
+    // fill offsets rect as (L = visL - winL, T = visT - winT, R = visR - winR, B = visB - winB)
+    bool GetDwmVisualOffsets(HWND hwnd, RECT& offsets);
+
+    // get min/max track sizes as a RECT: { left=minW, top=minH, right=maxW, bottom=maxH }
+    bool GetMinMax(HWND hwnd, RECT& mm);
+
     bool SetWindowVisualRect(HWND hwnd, const RECT& visualRect, UINT flags = SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW);
 
     void CenterCursorInVisual(HWND hwnd);

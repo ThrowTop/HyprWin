@@ -173,6 +173,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="config.ini" />
+    <None Include="hw.svg" />
+    <None Include="resource.aps" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="hw.ico">

@@ -326,6 +326,7 @@ namespace mm {
         case WM_RBUTTONDOWN:
         case WM_LBUTTONDOWN:
         if (windowAction == 0) {
+            // pick filtered window using visual rect logic
             HWND parent = utils::GetFilteredWindow(pt);
             if (!parent) break;
             targetWindow = parent;
@@ -333,7 +334,9 @@ namespace mm {
             utils::logWindowData(targetWindow);
 
             RECT windowRect{};
-            GetWindowRect(targetWindow, &windowRect);
+            if (!helpers::dwm::GetWindowRectSafe(targetWindow, windowRect)) {
+                break;
+            }
 
             if (helpers::mon::IsBorderlessFullscreen(targetWindow, windowRect)) {
                 LOG("NOT RESIZABLE/MOVABLE - BORDERLESS FULLSCREEN");
@@ -341,6 +344,7 @@ namespace mm {
             }
 
             helpers::dwm::SetFocusToWindow(targetWindow);
+
             if (wp == WM_RBUTTONDOWN) {
                 LONG_PTR style = GetWindowLongPtrW(targetWindow, GWL_STYLE);
                 if ((style & WS_THICKFRAME) == 0) {
@@ -348,37 +352,45 @@ namespace mm {
                     break;
                 }
 
-                MINMAXINFO mmi = {};
-                SendMessageW(targetWindow, WM_GETMINMAXINFO, 0, (LPARAM)&mmi);
-
-                minSize.cx = mmi.ptMinTrackSize.x > 0 ? mmi.ptMinTrackSize.x : 100;
-                minSize.cy = mmi.ptMinTrackSize.y > 0 ? mmi.ptMinTrackSize.y : 38;
-
-                maxSize.cx = mmi.ptMaxTrackSize.x > 0 ? mmi.ptMaxTrackSize.x : INT_MAX;
-                maxSize.cy = mmi.ptMaxTrackSize.y > 0 ? mmi.ptMaxTrackSize.y : INT_MAX;
-
-                LOG("MinMAX: %d x %d, %d x %d", minSize.cx, minSize.cy, maxSize.cx, maxSize.cy);
+                // min/max via helper
+                RECT mm{};
+                if (helpers::dwm::GetMinMax(targetWindow, mm)) {
+                    minSize.cx = mm.left;
+                    minSize.cy = mm.top;
+                    maxSize.cx = mm.right;
+                    maxSize.cy = mm.bottom;
+                    LOG("MinMAX: %d x %d, %d x %d", minSize.cx, minSize.cy, maxSize.cx, maxSize.cy);
+                }
             }
 
             if (IsZoomed(targetWindow)) {
-                // Save anchor before restore
-                double anchorXPercent = static_cast<double>(pt.x - windowRect.left) / (windowRect.right - windowRect.left);
-                double anchorYPercent = static_cast<double>(pt.y - windowRect.top) / (windowRect.bottom - windowRect.top);
+                // Save anchor before restore (based on WINDOW rect)
+                const int w0 = windowRect.right - windowRect.left;
+                const int h0 = windowRect.bottom - windowRect.top;
+                if (w0 > 0 && h0 > 0) {
+                    const double anchorXPercent = static_cast<double>(pt.x - windowRect.left) / w0;
+                    const double anchorYPercent = static_cast<double>(pt.y - windowRect.top) / h0;
 
-                ShowWindow(targetWindow, SW_RESTORE);
-                GetWindowRect(targetWindow, &windowRect); // post-restore
+                    ShowWindow(targetWindow, SW_RESTORE);
 
-                int width = windowRect.right - windowRect.left;
-                int height = windowRect.bottom - windowRect.top;
+                    if (!helpers::dwm::GetWindowRectSafe(targetWindow, windowRect))
+                        break;
 
-                dragOffset.x = static_cast<int>(width * anchorXPercent);
-                dragOffset.y = static_cast<int>(height * anchorYPercent);
+                    const int width = windowRect.right - windowRect.left;
+                    const int height = windowRect.bottom - windowRect.top;
 
-                int newLeft = pt.x - dragOffset.x;
-                int newTop = pt.y - dragOffset.y;
+                    dragOffset.x = static_cast<int>(width * anchorXPercent);
+                    dragOffset.y = static_cast<int>(height * anchorYPercent);
 
-                SetWindowPos(targetWindow, nullptr, newLeft, newTop, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
-                GetWindowRect(targetWindow, &windowRect); // final post-restore
+                    const int newLeft = pt.x - dragOffset.x;
+                    const int newTop = pt.y - dragOffset.y;
+
+                    SetWindowPos(targetWindow, nullptr, newLeft, newTop, width, height,
+                        SWP_NOZORDER | SWP_NOACTIVATE);
+
+                    if (!helpers::dwm::GetWindowRectSafe(targetWindow, windowRect))
+                        break;
+                }
             }
 
             if (wp == WM_LBUTTONDOWN) {
@@ -389,44 +401,50 @@ namespace mm {
                 resizeStartRect = windowRect;
 
                 if (config->m_settings.resize_corner == ResizeCorner::None) {
-                    int xRel = pt.x - windowRect.left;
-                    int yRel = pt.y - windowRect.top;
-                    int w = windowRect.right - windowRect.left;
-                    int h = windowRect.bottom - windowRect.top;
+                    const int xRel = pt.x - windowRect.left;
+                    const int yRel = pt.y - windowRect.top;
+                    const int w = windowRect.right - windowRect.left;
+                    const int h = windowRect.bottom - windowRect.top;
 
-                    float xRatio = static_cast<float>(xRel) / w;
-                    float yRatio = static_cast<float>(yRel) / h;
+                    if (w > 0 && h > 0) {
+                        const float xRatio = static_cast<float>(xRel) / w;
+                        const float yRatio = static_cast<float>(yRel) / h;
 
-                    if (xRatio < 0.5f) {
-                        resizeCorner = (yRatio < 0.5f) ? ResizeCorner::TopLeft : ResizeCorner::BottomLeft;
+                        if (xRatio < 0.5f) {
+                            resizeCorner = (yRatio < 0.5f) ? ResizeCorner::TopLeft : ResizeCorner::BottomLeft;
+                        }
+                        else {
+                            resizeCorner = (yRatio < 0.5f) ? ResizeCorner::TopRight : ResizeCorner::BottomRight;
+                        }
                     }
                     else {
-                        resizeCorner = (yRatio < 0.5f) ? ResizeCorner::TopRight : ResizeCorner::BottomRight;
+                        // fallback
+                        resizeCorner = ResizeCorner::BottomRight;
                     }
                 }
                 else {
                     resizeCorner = config->m_settings.resize_corner;
                 }
 
-                MINMAXINFO mmi = {};
-                SendMessageW(targetWindow, WM_GETMINMAXINFO, 0, (LPARAM)&mmi);
-                minSize.cx = mmi.ptMinTrackSize.x > 0 ? mmi.ptMinTrackSize.x : 100;
-                minSize.cy = mmi.ptMinTrackSize.y > 0 ? mmi.ptMinTrackSize.y : 38;
-                maxSize.cx = mmi.ptMaxTrackSize.x > 0 ? mmi.ptMaxTrackSize.x : INT_MAX;
-                maxSize.cy = mmi.ptMaxTrackSize.y > 0 ? mmi.ptMaxTrackSize.y : INT_MAX;
+                RECT mm{};
+                if (helpers::dwm::GetMinMax(targetWindow, mm)) {
+                    minSize.cx = mm.left;
+                    minSize.cy = mm.top;
+                    maxSize.cx = mm.right;
+                    maxSize.cy = mm.bottom;
+                }
             }
 
             overlayBounds.store(windowRect, std::memory_order_relaxed);
 
-            RECT visual{};
-            if (SUCCEEDED(DwmGetWindowAttribute(targetWindow, DWMWA_EXTENDED_FRAME_BOUNDS, &visual, sizeof(visual)))) {
-                overlayVisualOffset.left = visual.left - windowRect.left;
-                overlayVisualOffset.top = visual.top - windowRect.top;
-                overlayVisualOffset.right = visual.right - windowRect.right;
-                overlayVisualOffset.bottom = visual.bottom - windowRect.bottom;
-            }
-            else {
-                overlayVisualOffset = {};
+            {
+                RECT offs{};
+                if (helpers::dwm::GetDwmVisualOffsets(targetWindow, offs)) {
+                    overlayVisualOffset = offs;
+                }
+                else {
+                    overlayVisualOffset = {};
+                }
             }
 
             windowAction.store((wp == WM_LBUTTONDOWN) ? 1 : 2, std::memory_order_release);
@@ -436,19 +454,26 @@ namespace mm {
 
         case WM_LBUTTONUP:
         case WM_RBUTTONUP:
-        short action = windowAction.load(std::memory_order_acquire);
-        if (targetWindow && ((action == 1 && wp == WM_LBUTTONUP) || (action == 2 && wp == WM_RBUTTONUP))) {
-            RECT r = overlayBounds.load(std::memory_order_relaxed);
-            SetWindowPos(targetWindow, nullptr, r.left, r.top,
-                r.right - r.left, r.bottom - r.top,
-                SWP_NOZORDER | SWP_NOACTIVATE);
-            windowAction.store(0, std::memory_order_release);
-            targetWindow = nullptr;
+        {
+            short action = windowAction.load(std::memory_order_acquire);
+            if (targetWindow && ((action == 1 && wp == WM_LBUTTONUP) || (action == 2 && wp == WM_RBUTTONUP))) {
+                RECT r = overlayBounds.load(std::memory_order_relaxed);
+
+                SetWindowPos(targetWindow, nullptr, r.left, r.top,
+                    r.right - r.left, r.bottom - r.top,
+                    SWP_NOZORDER | SWP_NOACTIVATE);
+
+                windowAction.store(0, std::memory_order_release);
+                targetWindow = nullptr;
+            }
+            break;
         }
 
+        default:
         break;
         }
     }
+
     //
 
     //

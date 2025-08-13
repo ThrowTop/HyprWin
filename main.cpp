@@ -12,9 +12,9 @@
 #include "resource.h"
 
 constexpr int NOT_ADMIN = 1;
-constexpr int ALREADY_RUNNING = 1 << 2;
-constexpr int CONFIG_ERROR = 1 << 3;
-constexpr int MUTEX_ERROR = 1 << 4;
+constexpr int ALREADY_RUNNING = 2;
+constexpr int CONFIG_ERROR = 3;
+constexpr int MUTEX_ERROR = 4;
 
 struct AppState {
     Config cfg;

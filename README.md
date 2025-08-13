@@ -9,6 +9,8 @@ It supports **modifiers**, **color themes**, and various window control dispatch
 
 ## Recommend remapping the windows key to some unused key using your keyboard software. I use `PAUSE` as i have a 75% keyboard. 
 
+Discord: https://discord.gg/ntR53BTC
+
 ---
 
 ## Features

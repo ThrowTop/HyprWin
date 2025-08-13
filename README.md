@@ -1,10 +1,12 @@
-﻿# HyprWin
+﻿﻿# HyprWin
 
 HyprWin is a Windows utility for **resizing**, **moving**, and **managing windows** using customizable keyboard shortcuts.  
 It supports **modifiers**, **color themes**, and various window control dispatchers.
 
 > ⚠ **Warning:** This project uses a **non-standard INI format** for syntax highlighting purposes.  
 > All binds require the **SUPER** key to be held.
+
+## Recommend remapping the windows key to some unused key using your keyboard software. I use `PAUSE` as i have a 75% keyboard. 
 
 ---
 
@@ -40,7 +42,7 @@ It supports **modifiers**, **color themes**, and various window control dispatch
 - CONTROL LCONTROL RCONTROL
 - MENU LMENU RMENU
 
-    `Example:`
+### Example
 ```ini
     [binds]
     Q = KillWindow
@@ -51,7 +53,7 @@ It supports **modifiers**, **color themes**, and various window control dispatch
     SUPER = PAUSE
     COLOR = 00FF00, FF0000, 45.0, 1, 10.0
 ```
-    `Format:`
+### Format:
 ```ini
     [Modifier+] <Key> = <Dispatcher> [,arg1, arg2...]
     HEXCOLOR = 00FF00 -> RED 0: GREEN: 255 BLUE: 0

@@ -13,6 +13,9 @@
 #include "../include/toggle.hpp"
 
 static constexpr auto WM_TRAY = WM_USER + 1;
+// Handle Explorer restarts (TaskbarCreated broadcast)
+static UINT WM_TASKBARCREATED = RegisterWindowMessageA("TaskbarCreated");
+
 std::map<HWND, std::reference_wrapper<Tray::Tray>> Tray::Tray::trayList;
 
 Tray::Tray::Tray(std::string identifier, Icon icon) : BaseTray(std::move(identifier), icon) {
@@ -37,23 +40,30 @@ Tray::Tray::Tray(std::string identifier, Icon icon) : BaseTray(std::move(identif
         throw std::runtime_error("Failed to update window");
     }
 
-    memset(&notifyData, 0, sizeof(NOTIFYICONDATA));
-    notifyData.cbSize = sizeof(NOTIFYICONDATA);
+    // Use ANSI variant consistently with CreateWindowA/RegisterClassExA
+    memset(&notifyData, 0, sizeof(NOTIFYICONDATAA));
+    notifyData.cbSize = sizeof(NOTIFYICONDATAA);
     notifyData.hWnd = hwnd;
+    notifyData.uID = 1; // stable non-zero ID
     notifyData.uFlags = NIF_ICON | NIF_MESSAGE;
     notifyData.uCallbackMessage = WM_TRAY;
     notifyData.hIcon = this->icon;
 
-    if (Shell_NotifyIcon(NIM_ADD, &notifyData) == FALSE) {
+    if (Shell_NotifyIconA(NIM_ADD, reinterpret_cast<PNOTIFYICONDATAA>(&notifyData)) == FALSE) {
         throw std::runtime_error("Failed to register tray icon");
     }
+
+    // Set modern behavior after successful add
+    notifyData.uVersion = NOTIFYICON_VERSION_4;
+    Shell_NotifyIconA(NIM_SETVERSION, reinterpret_cast<PNOTIFYICONDATAA>(&notifyData));
+
     trayList.insert({ hwnd, *this });
 }
 Tray::Tray::~Tray() {
     allocations.clear();
 }
 void Tray::Tray::exit() {
-    Shell_NotifyIcon(NIM_DELETE, &notifyData);
+    Shell_NotifyIconA(NIM_DELETE, reinterpret_cast<PNOTIFYICONDATAA>(&notifyData));
     DestroyIcon(notifyData.hIcon);
     DestroyMenu(menu);
 
@@ -69,7 +79,7 @@ void Tray::Tray::update() {
     DestroyMenu(menu);
     menu = construct(entries, this, true);
 
-    if (Shell_NotifyIcon(NIM_MODIFY, &notifyData) == FALSE) {
+    if (Shell_NotifyIconA(NIM_MODIFY, reinterpret_cast<PNOTIFYICONDATAA>(&notifyData)) == FALSE) {
         throw std::runtime_error("Failed to update tray icon");
     }
     SendMessage(hwnd, WM_INITMENUPOPUP, reinterpret_cast<WPARAM>(menu), 0);
@@ -143,6 +153,14 @@ HMENU Tray::Tray::construct(const std::vector<std::shared_ptr<TrayEntry>>& entri
 }
 
 LRESULT CALLBACK Tray::Tray::wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    // Re-add the icon after Explorer restarts
+    if (msg == WM_TASKBARCREATED) {
+        auto& menu = trayList.at(hwnd).get();
+        Shell_NotifyIconA(NIM_ADD, reinterpret_cast<PNOTIFYICONDATAA>(&menu.notifyData));
+        Shell_NotifyIconA(NIM_SETVERSION, reinterpret_cast<PNOTIFYICONDATAA>(&menu.notifyData));
+        return 0;
+    }
+
     switch (msg) {
     case WM_TRAY:
     if (lParam == WM_RBUTTONUP) {
@@ -156,26 +174,28 @@ LRESULT CALLBACK Tray::Tray::wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
     }
     break;
     case WM_COMMAND:
-    MENUITEMINFO winItem{ 0 };
-    winItem.fMask = MIIM_DATA | MIIM_ID;
-    winItem.cbSize = sizeof(MENUITEMINFO);
+    {
+        MENUITEMINFOA winItem{ 0 };
+        winItem.fMask = MIIM_DATA | MIIM_ID;
+        winItem.cbSize = sizeof(MENUITEMINFOA);
 
-    auto& menu = trayList.at(hwnd).get();
-    if (GetMenuItemInfo(menu.menu, static_cast<UINT>(wParam), FALSE, &winItem)) {
-        auto* item = reinterpret_cast<TrayEntry*>(winItem.dwItemData);
-        if (auto* button = dynamic_cast<Button*>(item); button) {
-            button->clicked();
+        auto& menu = trayList.at(hwnd).get();
+        if (GetMenuItemInfoA(menu.menu, static_cast<UINT>(wParam), FALSE, &winItem)) {
+            auto* item = reinterpret_cast<TrayEntry*>(winItem.dwItemData);
+            if (auto* button = dynamic_cast<Button*>(item); button) {
+                button->clicked();
+            }
+            else if (auto* toggle = dynamic_cast<Toggle*>(item); toggle) {
+                toggle->onToggled();
+                menu.update();
+            }
+            else if (auto* syncedToggle = dynamic_cast<SyncedToggle*>(item); syncedToggle) {
+                syncedToggle->onToggled();
+                menu.update();
+            }
         }
-        else if (auto* toggle = dynamic_cast<Toggle*>(item); toggle) {
-            toggle->onToggled();
-            menu.update();
-        }
-        else if (auto* syncedToggle = dynamic_cast<SyncedToggle*>(item); syncedToggle) {
-            syncedToggle->onToggled();
-            menu.update();
-        }
+        break;
     }
-    break;
     }
     return DefWindowProc(hwnd, msg, wParam, lParam);
 }

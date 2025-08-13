@@ -205,7 +205,7 @@ namespace dispatcher {
 
     void MsgBox(const RunProcessParams& p) {
         std::thread([&] {
-            MessageBoxW(nullptr, p.path.c_str(), p.args.c_str(), MB_OK);
+            MessageBoxW(nullptr, p.args.c_str(), p.path.c_str(), MB_OK);
         }).detach();
     }
 

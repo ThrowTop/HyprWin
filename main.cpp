@@ -26,14 +26,29 @@ struct AppState {
 
 static bool RegisterSuperKey(UINT vk) {
     if (vk == 0) return false;
+    switch (vk) {
+    case VK_LWIN: case VK_RWIN:
+    case VK_SHIFT: case VK_CONTROL: case VK_MENU:
+    case VK_LSHIFT: case VK_RSHIFT:
+    case VK_LCONTROL: case VK_RCONTROL:
+    case VK_LMENU: case VK_RMENU:
+    return false;
+    default: break;
+    }
+
+    constexpr int kId = 1;
     static UINT super_vk = 0;
-    if (super_vk == vk)
+
+    if (super_vk == vk) return true;
+
+    UnregisterHotKey(nullptr, kId);
+
+    const UINT mods = MOD_NOREPEAT;
+    if (RegisterHotKey(nullptr, kId, mods, vk)) {
+        super_vk = vk;
         return true;
-
-    super_vk = vk;
-
-    UnregisterHotKey(nullptr, 1);
-    return RegisterHotKey(nullptr, 1, 0, super_vk) != 0;
+    }
+    return false;
 }
 
 int WINAPI WinMain(
@@ -133,7 +148,7 @@ int WINAPI WinMain(
     });
 
     MSG msg;
-    while (GetMessageW(&msg, nullptr, 0, 0)) {
+    while (GetMessageW(&msg, nullptr, 0, 0) > 0) {
         std::unique_lock lock(state.mtx);
         if (!state.running)
             break;

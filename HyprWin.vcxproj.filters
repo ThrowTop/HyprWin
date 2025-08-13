@@ -175,6 +175,7 @@
     <None Include="config.ini" />
     <None Include="hw.svg" />
     <None Include="resource.aps" />
+    <None Include="README.md" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="hw.ico">

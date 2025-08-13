@@ -272,6 +272,7 @@
   <ItemGroup>
     <None Include="config.ini" />
     <None Include="hw.svg" />
+    <None Include="README.md" />
     <None Include="resource.aps" />
   </ItemGroup>
   <ItemGroup>

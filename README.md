@@ -1,4 +1,5 @@
-﻿﻿# HyprWin
+
+# HyprWin
 
 HyprWin is a Windows utility for **resizing**, **moving**, and **managing windows** using customizable keyboard shortcuts.  
 It supports **modifiers**, **color themes**, and various window control dispatchers.

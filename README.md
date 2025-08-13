@@ -44,19 +44,19 @@ It supports **modifiers**, **color themes**, and various window control dispatch
 
 ### Example
 ```ini
-    [binds]
-    Q = KillWindow
-    SHIFT+Q = ForceKillWindow
-    SHIFT+F6 = SetResolution 1024x768@360
+[binds]
+Q = KillWindow
+SHIFT+Q = ForceKillWindow
+SHIFT+F6 = SetResolution 1024x768@360
 
-    [settings]
-    SUPER = PAUSE
-    COLOR = 00FF00, FF0000, 45.0, 1, 10.0
+[settings]
+SUPER = PAUSE
+COLOR = 00FF00, FF0000, 45.0, 1, 10.0
 ```
 ### Format:
 ```ini
-    [Modifier+] <Key> = <Dispatcher> [,arg1, arg2...]
-    HEXCOLOR = 00FF00 -> RED 0: GREEN: 255 BLUE: 0
+[Modifier+] <Key> = <Dispatcher> [,arg1, arg2...]
+HEXCOLOR = 00FF00 -> RED 0: GREEN: 255 BLUE: 0
 ```
 ```ini
 [settings]

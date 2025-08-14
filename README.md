@@ -1,4 +1,5 @@
-﻿﻿# HyprWin
+
+# HyprWin
 
 HyprWin is a Windows utility for **resizing**, **moving**, and **managing windows** using customizable keyboard shortcuts.  
 It supports **modifiers**, **color themes**, and various window control dispatchers.
@@ -7,6 +8,8 @@ It supports **modifiers**, **color themes**, and various window control dispatch
 > All binds require the **SUPER** key to be held.
 
 ## Recommend remapping the windows key to some unused key using your keyboard software. I use `PAUSE` as i have a 75% keyboard. 
+
+Discord: https://discord.gg/ntR53BTC
 
 ---
 

@@ -165,7 +165,7 @@ namespace km {
                 if (st.stop_requested()) break;
 
                 if (installHookRequested && !hookHandle) {
-                    LOG_T("Installing keyboard hook...");
+                    HOOK_INSTALL();
                     hookHandle = SetWindowsHookExW(WH_KEYBOARD_LL, HookProc, nullptr, 0);
                     if (hookHandle) {
                         installHookRequested = false;
@@ -199,7 +199,7 @@ namespace km {
             }
 
             if (hookHandle) {
-                LOG_T("Uninstalling keyboard hook...");
+                HOOK_REMOVE();
                 UnhookWindowsHookEx(hookHandle);
                 hookHandle = nullptr;
             }

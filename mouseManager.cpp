@@ -6,6 +6,8 @@
 #include "helpers/dwm.hpp"
 #include "helpers/mon.hpp"
 
+#include "tinylog.hpp"
+
 namespace mm {
     MouseManager::MouseManager(HINSTANCE hi, Config* cfg) : hInstance(hi), config(cfg) {
         instance = this;
@@ -67,36 +69,39 @@ namespace mm {
     }
 
     LRESULT CALLBACK MouseManager::MouseProc(int code, WPARAM wParam, LPARAM lParam) {
-        if (code >= 0 && instance && lParam) {
-            MSLLHOOKSTRUCT* ms = reinterpret_cast<MSLLHOOKSTRUCT*>(lParam);
+        if (code < 0 || !instance || !lParam)
+            return CallNextHookEx(nullptr, code, wParam, lParam);
 
-            if (wParam == WM_MOUSEMOVE) {
-                instance->latestMousePos.store(ms->pt, std::memory_order_relaxed);
-            }
-            else {
-                instance->mouseQueue.push(wParam);
-                instance->cv.notify_one();
+        MSLLHOOKSTRUCT* ms = reinterpret_cast<MSLLHOOKSTRUCT*>(lParam);
 
-                return 1;
-
-                switch (wParam) {
-                case WM_LBUTTONDOWN:
-                case WM_RBUTTONDOWN:
-                case WM_MBUTTONDOWN:
-                case WM_MOUSEWHEEL:
-                case WM_MOUSEHWHEEL:
-                return 1;
-                case WM_LBUTTONUP:
-                case WM_RBUTTONUP:
-                case WM_MBUTTONUP:
-                return CallNextHookEx(nullptr, code, wParam, lParam); // allow release
-                default:
-                return 1;
-                }
-            }
-        }
-
+        switch (wParam) {
+        case WM_MOUSEMOVE:
+        instance->latestMousePos.store(ms->pt, std::memory_order_relaxed);
         return CallNextHookEx(nullptr, code, wParam, lParam);
+
+        case WM_LBUTTONDOWN:
+        case WM_RBUTTONDOWN:
+        instance->lastDownPt.store(ms->pt, std::memory_order_relaxed);
+        instance->mouseQueue.push(wParam);
+        instance->cv.notify_one();
+        return 1; // swallow press
+
+        case WM_LBUTTONUP:
+        case WM_RBUTTONUP:
+        instance->mouseQueue.push(wParam);
+        instance->cv.notify_one();
+        case WM_MBUTTONUP:
+        return CallNextHookEx(nullptr, code, wParam, lParam); // allow release
+
+        // keep swallowing these if that is what you want (not queued)
+        case WM_MBUTTONDOWN:
+        case WM_MOUSEWHEEL:
+        case WM_MOUSEHWHEEL:
+        return 1;
+
+        default:
+        return CallNextHookEx(nullptr, code, wParam, lParam);
+        }
     }
 
     void MouseManager::OverlayLoop(std::stop_token st) {
@@ -320,13 +325,13 @@ namespace mm {
     }
 
     void MouseManager::ProcessMouse(WPARAM wp) {
-        const POINT pt = latestMousePos.load(std::memory_order_relaxed);
-
         switch (wp) {
         case WM_RBUTTONDOWN:
         case WM_LBUTTONDOWN:
-        if (windowAction == 0) {
-            // pick filtered window using visual rect logic
+        if (windowAction.load(std::memory_order_acquire) == 0) {
+            const POINT pt = lastDownPt.load(std::memory_order_acquire);
+            latestMousePos.store(pt, std::memory_order_relaxed);
+
             HWND parent = utils::GetFilteredWindow(pt);
             if (!parent) break;
             targetWindow = parent;
@@ -335,12 +340,12 @@ namespace mm {
 
             RECT windowRect{};
             if (!helpers::dwm::GetWindowRectSafe(targetWindow, windowRect)) {
-                LOG("Failed to get window rect for target window");
+                LOG_E("Failed to get window rect for target window");
                 break;
             }
 
             if (helpers::mon::IsBorderlessFullscreen(targetWindow, windowRect)) {
-                LOG("NOT RESIZABLE/MOVABLE - BORDERLESS FULLSCREEN");
+                LOG_D("BORDERLESS FULLSCREEN");
                 return;
             }
 
@@ -349,7 +354,7 @@ namespace mm {
             if (wp == WM_RBUTTONDOWN) {
                 LONG_PTR style = GetWindowLongPtrW(targetWindow, GWL_STYLE);
                 if ((style & WS_THICKFRAME) == 0) {
-                    LOG("NOT RESIZABLE");
+                    LOG_I("NOT RESIZABLE");
                     break;
                 }
 
@@ -360,7 +365,7 @@ namespace mm {
                     minSize.cy = mm.top;
                     maxSize.cx = mm.right;
                     maxSize.cy = mm.bottom;
-                    LOG("MinMAX: %d x %d, %d x %d", minSize.cx, minSize.cy, maxSize.cx, maxSize.cy);
+                    LOG_T("MinMAX: {}", parse::rectToStr(mm));
                 }
             }
 

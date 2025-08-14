@@ -55,7 +55,9 @@ namespace mm {
         std::atomic<bool> overlayInitialized{ false };
         std::atomic<bool> overlayShouldInit{ false };
         std::atomic<RECT> overlayBounds = {};
-        std::atomic<POINT> latestMousePos = {};
+
+        std::atomic<POINT> latestMousePos = { POINT{0,0} };
+        std::atomic<POINT> lastDownPt{ POINT{0,0} };
 
         POINT dragOffset = {};
         POINT resizeStartCursor = {};
@@ -66,7 +68,7 @@ namespace mm {
         bool installHookRequested = false;
         bool uninstallHookRequested = false;
 
-        LockFreeQueue<WPARAM, 4> mouseQueue;
+        LockFreeQueue<WPARAM, 8> mouseQueue;
 
         ResizeCorner resizeCorner = ResizeCorner::BottomRight; // default
 

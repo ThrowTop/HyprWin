@@ -159,7 +159,7 @@ static const std::unordered_map<std::string, SettingParser> g_settingParsers = {
 
 // Config::LoadConfig
 bool Config::LoadConfig(const std::string& filename) {
-    LOG_CONFIG("Loading config file: %s", filename.c_str());
+    LOG_I("Loading config file: {}", filename);
     std::ifstream file(filename);
     std::istringstream fallback(default_config);
     std::istream* in = nullptr;
@@ -171,13 +171,13 @@ bool Config::LoadConfig(const std::string& filename) {
         in = &file;
     }
     else {
-        LOG_CONFIG("Config not found. Creating default: %s", filename.c_str());
+        LOG_I("Config not found. Creating default: {}", filename);
         if (std::ofstream out(filename); out.is_open()) {
             out << default_config;
-            LOG_CONFIG("Default config written.");
+            LOG_I("Default config written.");
         }
         else {
-            LOG_CONFIG("Failed to write default config: %s", filename.c_str());
+            LOG_C("Failed to write default config: {}", filename);
         }
         MessageBoxA(nullptr, "Default config created.", "Config Initialized", MB_OK | MB_ICONINFORMATION);
         in = &fallback;
@@ -219,17 +219,16 @@ bool Config::LoadConfig(const std::string& filename) {
                 const std::string keyName = parse::VKToString(k.vk);
                 const std::string modMaskStr = ModMaskToString(k.modMask);
                 if (vec.full()) {
-                    LOG_CONFIG("Key Combo: %s%s Already Has 4 Dispatchers", modMaskStr.c_str(), keyName.c_str());
+                    LOG_W("Key Combo: {}{} Already Has 4 Dispatchers", modMaskStr, keyName);
                 }
                 else {
                     vec.push_back(*act); // returns false if >4; ignore or log if desired
-#if defined(CONFIG_DEBUG) && defined(DBG)
-                    LOG_CONFIG("Bind: %s%s -> %s %s",
-                        modMaskStr.c_str(),
-                        keyName.c_str(),
-                        parts[0].c_str(),
-                        (info.empty() ? "" : info.c_str()));
-#endif
+
+                    LOG_CONFIG("Bind: {}{} -> {} {}",
+                        modMaskStr,
+                        keyName,
+                        parts[0],
+                        (info.empty() ? "" : info));
                 }
             }
         } break;

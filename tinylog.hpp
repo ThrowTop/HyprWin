@@ -128,11 +128,10 @@ namespace tinylog {
                 DWORD mode = 0;
                 if (!GetConsoleMode(hIn, &mode)) return;
 
-                // Per docs: set ENABLE_EXTENDED_FLAGS before clearing QUICK_EDIT
                 mode |= ENABLE_EXTENDED_FLAGS;
-                mode &= ~ENABLE_QUICK_EDIT_MODE;   // disable freeze-on-select
-                // optional: also stop accidental paste with Insert
-                mode &= ~ENABLE_INSERT_MODE;
+                mode &= ~ENABLE_QUICK_EDIT_MODE; // disable freeze-on-select
+                mode &= ~ENABLE_INSERT_MODE;     // optional: stop accidental paste
+                mode |= ENABLE_MOUSE_INPUT;      // keep scrollwheel support
 
                 SetConsoleMode(hIn, mode);
             };

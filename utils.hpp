@@ -4,19 +4,20 @@
 #include <format>
 #include <iostream>
 #include "tinylog.hpp"
+#include "settings/parser.hpp"
 
 // Override
 //#define DBG // Starts Console for debug printing, Enables LOG Functions even in release mode, enabled by default in Debug
 //#define LOG_HOOKS //Logs inside hook threads (will slow down mouse)
-#define CONFIG_DEBUG
 
-#ifndef DBG
-#ifdef _DEBUG
+#if !defined(DBG) && defined(_DEBUG)
 #define DBG
-#endif
 #endif
 
 #ifdef DBG
+//#define CONFIG_DEBUG
+//#define HOOK_DEBUG
+
 // each thread stores their own name
 inline thread_local const char* threadName = "Unnamed";
 
@@ -30,30 +31,28 @@ inline const char* GetThreadName() {
 
 #define LOG(fmt, ...) printf("[+] " fmt "\n", __VA_ARGS__)
 #define WLOG(fmt, ...) wprintf(L"[+] " fmt "\n", __VA_ARGS__)
-#define LOG_THREAD() LOG_D("Thread {} ({}) | {}", GetCurrentThreadId(), GetThreadName(), __FUNCTION__);
+#define LOG_THREAD() LOG_D("Thread {} ({}) | {}", GetCurrentThreadId(), GetThreadName(), __FUNCTION__)
 #define SET_THREAD_NAME(name) SetThreadNameInternal(name); LOG_D("Thread {} ({}) | {}", GetCurrentThreadId(), GetThreadName(), __FUNCTION__)
 #else
-#define CONSOLE() do {} while (0) // compiler optimizes to nop while still allowing empty if statements
-#define LOG(...) do {} while (0)
-#define WLOG(...) do {} while (0)
-#define LOG_THREAD() do {} while (0)
-#define SET_THREAD_NAME(name) do {} while (0)
+#define CONSOLE() (void)0 // compiler optimizes to nop while still allowing empty if statements
+#define LOG(...) (void)0
+#define WLOG(...) (void)0
+#define LOG_THREAD() (void)0
+#define SET_THREAD_NAME(name) (void)0
 #endif
 
 #if defined(CONFIG_DEBUG) && defined(DBG)
-#define LOG_CONFIG(fmt, ...) printf("[CFG] " fmt "\n", __VA_ARGS__)
-#define WLOG_CONFIG(fmt, ...) wprintf(L"[CFG] " fmt L"\n", __VA_ARGS__)
+#define LOG_CONFIG(...) LOG_D(__VA_ARGS__)
 #else
-#define LOG_CONFIG(...) do {} while (0)
-#define WLOG_CONFIG(...) do {} while (0)
+#define LOG_CONFIG(...) (void)0
 #endif
 
-#ifdef LOG_HOOKS
-#define HOOK_INSTALL() LOG("HOOK INSTALL %d (%s) | %s",GetCurrentThreadId(), GetThreadName(), __FUNCTION__)
-#define HOOK_REMOVE() LOG("HOOK REMOVE %d (%s) | %s",GetCurrentThreadId(), GetThreadName(), __FUNCTION__)
+#ifdef HOOK_DEBUG
+#define HOOK_INSTALL() LOG_D("Hook Installed {} ({}) | {}", GetCurrentThreadId(), GetThreadName(), __FUNCTION__)
+#define HOOK_REMOVE() LOG_D("Hook Removed {} ({}) | {}", GetCurrentThreadId(), GetThreadName(), __FUNCTION__)
 #else
-#define HOOK_INSTALL(...) do {} while (0)
-#define HOOK_REMOVE(...) do {} while (0)
+#define HOOK_INSTALL(...) (void)0
+#define HOOK_REMOVE(...) (void)0
 #endif
 
 namespace utils {
@@ -86,15 +85,12 @@ namespace utils {
         }
         wchar_t className[256] = { 0 };
         GetClassNameW(hwnd, className, sizeof(className) / sizeof(wchar_t));
-        wchar_t title[256] = { 0 };
-        GetWindowTextW(hwnd, title, sizeof(title) / sizeof(wchar_t));
         RECT rect;
         GetWindowRect(hwnd, &rect);
-        WLOG("Window: (0x%zX) - Class: %ls, Title: %ls, Rect: (%ld, %ld, %ld, %ld)",
-            (size_t)hwnd,
-            className, title,
-            rect.left, rect.top, rect.right, rect.bottom);
-        //std::cout << std::format("[+] " "Window: {} - Class: {}, Title: {}, Rect: ({}, {}, {}, {})", static_cast<std::uintptr_t>(reinterpret_cast<std::uintptr_t>(hwnd)), className, title, rect.left, rect.top, rect.right, rect.bottom) << '\n';
+        LOG_T("Hw: (0x{:X}) CLS: {}, Rect: {}",
+            reinterpret_cast<size_t>(hwnd),
+            tinylog::WideToUtf8(std::wstring(className)),
+            parse::rectToStr(rect));
     }
 
     // Focus and elevation

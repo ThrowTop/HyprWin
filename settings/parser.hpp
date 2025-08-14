@@ -6,10 +6,19 @@
 #include <vector>
 #include <algorithm>
 #include "action_types.hpp"
+#include <format>
 
 namespace parse {
     inline void ToUpper(std::string& s) {
         std::transform(s.begin(), s.end(), s.begin(), ::toupper);
+    }
+
+    inline std::string rectToStr(const RECT& r) {
+        return std::format("({}, {}, {}, {})",
+            static_cast<long>(r.left),
+            static_cast<long>(r.top),
+            static_cast<long>(r.right),
+            static_cast<long>(r.bottom));
     }
 
     inline std::string Trim(const std::string& s) {

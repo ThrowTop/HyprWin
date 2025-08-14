@@ -170,6 +170,9 @@
     <ClInclude Include="settings\action_vec.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="tinylog.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="config.ini" />

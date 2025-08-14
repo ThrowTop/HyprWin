@@ -335,12 +335,13 @@ namespace mm {
 
             RECT windowRect{};
             if (!helpers::dwm::GetWindowRectSafe(targetWindow, windowRect)) {
+                LOG("Failed to get window rect for target window");
                 break;
             }
 
             if (helpers::mon::IsBorderlessFullscreen(targetWindow, windowRect)) {
                 LOG("NOT RESIZABLE/MOVABLE - BORDERLESS FULLSCREEN");
-                break;
+                return;
             }
 
             helpers::dwm::SetFocusToWindow(targetWindow);

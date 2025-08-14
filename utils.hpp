@@ -3,6 +3,7 @@
 #include <Windows.h>
 #include <format>
 #include <iostream>
+#include "tinylog.hpp"
 
 // Override
 //#define DBG // Starts Console for debug printing, Enables LOG Functions even in release mode, enabled by default in Debug
@@ -27,56 +28,10 @@ inline const char* GetThreadName() {
     return threadName;
 }
 
-class DebugConsole {
-public:
-    DebugConsole() {
-        AllocConsole();
-
-        // stdout/stderr to console
-        FILE* out = nullptr; FILE* err = nullptr;
-        freopen_s(&out, "CONOUT$", "w", stdout);
-        freopen_s(&err, "CONOUT$", "w", stderr);
-
-        // stdin to NUL so console input cannot block
-        FILE* in = nullptr;
-        freopen_s(&in, "NUL", "r", stdin);
-
-        // Enable VT on output
-        HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-        DWORD outMode = 0;
-        if (GetConsoleMode(hOut, &outMode)) {
-            outMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-            SetConsoleMode(hOut, outMode);
-        }
-
-        // Disable Quick Edit and mouse selection so clicks never pause I/O
-        HANDLE hIn = GetStdHandle(STD_INPUT_HANDLE);
-        DWORD inMode = 0;
-        if (GetConsoleMode(hIn, &inMode)) {
-            inMode |= ENABLE_EXTENDED_FLAGS;              // required to change quick-edit
-            inMode &= ~ENABLE_QUICK_EDIT_MODE;            // no selection pause
-            inMode &= ~ENABLE_INSERT_MODE;                // optional
-            inMode &= ~ENABLE_MOUSE_INPUT;                // optional: block mouse events in console
-            SetConsoleMode(hIn, inMode);
-        }
-
-        // Show without stealing focus, move off-screen if you like
-        HWND cw = GetConsoleWindow();
-        ShowWindow(cw, SW_SHOWNOACTIVATE);
-        SetWindowPos(cw, nullptr, -1000, 50, 100, 100,
-            SWP_NOZORDER | SWP_NOSIZE | SWP_NOACTIVATE);
-    }
-
-    ~DebugConsole() {
-        FreeConsole();
-    }
-};
-
-#define CONSOLE() DebugConsole dc
 #define LOG(fmt, ...) printf("[+] " fmt "\n", __VA_ARGS__)
 #define WLOG(fmt, ...) wprintf(L"[+] " fmt "\n", __VA_ARGS__)
-#define LOG_THREAD() LOG("Thread %d (%s) | %s",GetCurrentThreadId(), GetThreadName(), __FUNCTION__)
-#define SET_THREAD_NAME(name) SetThreadNameInternal(name); LOG("Thread Named %d (%s) | %s", GetCurrentThreadId(), GetThreadName(), __FUNCTION__)
+#define LOG_THREAD() LOG_D("Thread {} ({}) | {}", GetCurrentThreadId(), GetThreadName(), __FUNCTION__);
+#define SET_THREAD_NAME(name) SetThreadNameInternal(name); LOG_D("Thread {} ({}) | {}", GetCurrentThreadId(), GetThreadName(), __FUNCTION__)
 #else
 #define CONSOLE() do {} while (0) // compiler optimizes to nop while still allowing empty if statements
 #define LOG(...) do {} while (0)

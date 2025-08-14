@@ -11,6 +11,8 @@
 
 #include "resource.h"
 
+#include "tinylog.hpp"
+
 constexpr int NOT_ADMIN = 1;
 constexpr int ALREADY_RUNNING = 2;
 constexpr int CONFIG_ERROR = 3;
@@ -67,7 +69,15 @@ int WINAPI WinMain(
         return ALREADY_RUNNING;
     }
 
-    CONSOLE();
+    tinylog::init({
+        .console = true,
+        .file_path = "hyprwin.log",
+        .console_level = tinylog::Level::Debug,
+        .file_level = tinylog::Level::Trace,
+        .date_format = L"MM'-'dd",
+        .time_format = L"HH':'mm':'ss"
+        });
+
     SET_THREAD_NAME("Main");
 
     AppState state;
@@ -80,10 +90,6 @@ int WINAPI WinMain(
         MessageBoxW(nullptr, L"Failed to register super key.", L"Error", MB_OK | MB_ICONERROR);
         return CONFIG_ERROR;
     }
-
-    //LOG_CONFIG("Super: %d", state.cfg.m_settings.SUPER);
-
-    // No more early exits, cleanup required past this point.
 
     DWORD mainThreadId = GetCurrentThreadId();
     std::jthread trayThread([&state, mainThreadId] {
@@ -120,6 +126,7 @@ int WINAPI WinMain(
                 MessageBoxW(nullptr, L"Failed to register super key after reload.", L"Error", MB_OK | MB_ICONERROR);
             }
         }));
+        tray.addEntry(Tray::Separator());
 
         tray.addEntry(Tray::Button("Config Folder", [&] {
             wchar_t path[MAX_PATH];
@@ -165,7 +172,6 @@ int WINAPI WinMain(
         }
     }
 
-    UnregisterHotKey(nullptr, 1);
     if (mutex) CloseHandle(mutex);
     return EXIT_SUCCESS;
 }

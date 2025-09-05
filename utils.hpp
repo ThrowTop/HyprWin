@@ -29,14 +29,10 @@ inline const char* GetThreadName() {
     return threadName;
 }
 
-#define LOG(fmt, ...) printf("[+] " fmt "\n", __VA_ARGS__)
-#define WLOG(fmt, ...) wprintf(L"[+] " fmt "\n", __VA_ARGS__)
 #define LOG_THREAD() LOG_D("Thread {} ({}) | {}", GetCurrentThreadId(), GetThreadName(), __FUNCTION__)
 #define SET_THREAD_NAME(name) SetThreadNameInternal(name); LOG_D("Thread {} ({}) | {}", GetCurrentThreadId(), GetThreadName(), __FUNCTION__)
 #else
 #define CONSOLE() (void)0 // compiler optimizes to nop while still allowing empty if statements
-#define LOG(...) (void)0
-#define WLOG(...) (void)0
 #define LOG_THREAD() (void)0
 #define SET_THREAD_NAME(name) (void)0
 #endif

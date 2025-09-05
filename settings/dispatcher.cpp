@@ -181,10 +181,11 @@ namespace dispatcher {
     }
 
     bool Run(const RunProcessParams& p) {
-        WLOG(L"Run: path='%s' | admin=%d | args='%s'",
-            p.path.c_str(),
-            p.ADMIN,
-            p.args.c_str());
+        LOG_I("Run: path='{}' | admin={} | args='{}'",
+            parse::ToUTF8(p.path),            // std::string
+            p.ADMIN,                          // bool
+            parse::ToUTF8(p.args));           // std::string
+
         return p.ADMIN ? RunAsAdmin(p) : RunAsUser(p);
     }
 
@@ -192,7 +193,7 @@ namespace dispatcher {
         DEVMODE dm = {};
         dm.dmSize = sizeof(dm);
         if (!EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &dm)) {
-            LOG("WARNING SHIT IS FUCKED SET DISPLAY");
+            LOG_C("WARNING SHIT IS FUCKED SET DISPLAY");
         }
         dm.dmPelsWidth = p.width;
         dm.dmPelsHeight = p.height;
@@ -201,6 +202,14 @@ namespace dispatcher {
         dm.dmFields = DM_PELSWIDTH | DM_PELSHEIGHT | DM_BITSPERPEL | DM_DISPLAYFREQUENCY;
 
         LONG result = ChangeDisplaySettingsExW(NULL, &dm, NULL, CDS_UPDATEREGISTRY | CDS_GLOBAL, NULL);
+    }
+
+    void IPCMessage(const IPCMessageParams& p) {
+        UINT msg = RegisterWindowMessageW(p.regMsgName.c_str());
+        if (!msg) return;
+        HWND h = FindWindowW(p.targetClass.c_str(), nullptr);
+        if (!h) return;
+        PostMessageW(h, msg, p.cmd, 0);
     }
 
     void MsgBox(const RunProcessParams& p) {

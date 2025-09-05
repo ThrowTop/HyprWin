@@ -97,26 +97,20 @@ public:
     }
 
     bool setDefaultDevice(const std::wstring& deviceId) const {
-        CComPtr<IPolicyConfig> policyConfig;
+        CComPtr<IPolicyConfig> pc;
         HRESULT hr = CoCreateInstance(policyClsid, nullptr, CLSCTX_ALL,
-            __uuidof(IPolicyConfig), (void**)&policyConfig);
+            __uuidof(IPolicyConfig), (void**)&pc);
         if (FAILED(hr)) {
-            WLOG(L"CoCreateInstance failed: 0x%08X", hr);
+            LOG_E("PolicyConfig CoCreateInstance failed: 0x{:08X}", (unsigned)hr);
             return false;
         }
-
-        hr = policyConfig->SetDefaultEndpoint(deviceId.c_str(), 0);
-        if (FAILED(hr)) {
-            WLOG(L"SetDefaultEndpoint (console) failed: 0x%08X", hr);
-            return false;
+        for (int role = 0; role <= 2; ++role) { // 0=eConsole, 1=eMultimedia, 2=eCommunications
+            hr = pc->SetDefaultEndpoint(deviceId.c_str(), role);
+            if (FAILED(hr)) {
+                LOG_E("SetDefaultEndpoint role={} failed: 0x{:08X}", role, (unsigned)hr);
+                return false;
+            }
         }
-
-        hr = policyConfig->SetDefaultEndpoint(deviceId.c_str(), 2);
-        if (FAILED(hr)) {
-            WLOG(L"SetDefaultEndpoint (comm) failed: 0x%08X", hr);
-            return false;
-        }
-
         return true;
     }
 
@@ -133,13 +127,13 @@ public:
         const auto& nextDevice = devices[nextIndex];
 
         if (setDefaultDevice(nextDevice.id)) {
-            WLOG(L"Switched to: %s", nextDevice.name.c_str());
+            //LOG_E("Switched to: {}", nextDevice.name);
             currentId = nextDevice.id;
             currentName = nextDevice.name;
             return true;
         }
 
-        WLOG(L"Failed to switch to: %s", nextDevice.name.c_str());
+        //LOG_E("Failed to switch to: {}", nextDevice.name);
         return false;
     }
 
@@ -160,19 +154,19 @@ public:
         for (const auto& dev : devices) {
             if (dev.name.find(targetPattern) != std::wstring::npos) {
                 if (setDefaultDevice(dev.id)) {
-                    WLOG(L"Switched to: %s", dev.name.c_str());
+                    //LOG_E("Switched to: {}", dev.name);
                     currentId = dev.id;
                     currentName = dev.name;
                     return true;
                 }
                 else {
-                    WLOG(L"Failed to set device: %s", dev.name.c_str());
+                    //LOG_E("Failed to set device: {}", dev.name);
                     return false;
                 }
             }
         }
 
-        WLOG(L"No matching device found for pattern: %s", targetPattern.c_str());
+        //LOG_E("No matching device found for pattern: {}", targetPattern);
         return false;
     }
 

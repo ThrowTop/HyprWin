@@ -44,13 +44,19 @@ enum class ResizeCorner { None, TopLeft, TopRight, BottomLeft, BottomRight };
 struct SendWinComboParams { UINT vk{}; bool shift = false; };
 struct RunProcessParams { std::wstring path; bool ADMIN = false; std::wstring args; };
 struct SetResolutionParams { int width{}, height{}, hz{}; };
+struct IPCMessageParams {
+    WPARAM cmd{};
+    std::wstring regMsgName;
+    std::wstring targetClass;
+};
 
 // Union of all parameter types
 using ActionParams = std::variant<
     std::monostate,
     SendWinComboParams,
     RunProcessParams,
-    SetResolutionParams
+    SetResolutionParams,
+    IPCMessageParams
 >;
 
 // Action = dispatcher type (registry id) + params

@@ -244,8 +244,25 @@ bool Config::LoadConfig(const std::string& filename) {
         default: break;
         }
     }
+    // replace: return m_settings.SUPER != 0;
 
-    return m_settings.SUPER != 0;
+    if (m_settings.SUPER == 0) {
+        LOG_E("SUPER not set (0).");
+        return false;
+    }
+
+    // Disallow Ctrl/Alt/Shift (generic or L/R variants)
+    switch (m_settings.SUPER) {
+    case VK_SHIFT: case VK_LSHIFT: case VK_RSHIFT:
+    case VK_CONTROL: case VK_LCONTROL: case VK_RCONTROL:
+    case VK_MENU: case VK_LMENU: case VK_RMENU:
+    LOG_E("Invalid SUPER: modifiers (Ctrl/Alt/Shift, any side) are not allowed. VK={}", (unsigned)m_settings.SUPER);
+    return false;
+    default:
+    break;
+    }
+
+    return true;
 }
 
 // Helpers

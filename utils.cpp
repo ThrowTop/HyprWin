@@ -16,6 +16,27 @@
 
 namespace utils {
     // -------- Window discovery --------
+    static bool IsShellProtected(HWND h) {
+        if (!h) return false;
+
+        // Hard handles
+        if (h == GetDesktopWindow() || h == GetShellWindow()) return true;
+
+        // Class filters
+        wchar_t cls[64] = { 0 };
+        if (GetClassNameW(h, cls, 64)) {
+            if (lstrcmpW(cls, L"Progman") == 0) return true;                 // legacy desktop host
+            if (lstrcmpW(cls, L"WorkerW") == 0) return true;                 // wallpaper hosts
+            if (lstrcmpW(cls, L"SHELLDLL_DefView") == 0) return true;        // desktop view
+            if (lstrcmpW(cls, L"Shell_TrayWnd") == 0) return true;           // taskbar primary
+            if (lstrcmpW(cls, L"Shell_SecondaryTrayWnd") == 0) return true;  // taskbar secondary
+        }
+
+        // Desktop containers often host SHELLDLL_DefView as a child
+        if (FindWindowExW(h, nullptr, L"SHELLDLL_DefView", nullptr)) return true;
+
+        return false;
+    }
 
     static bool IsLikelyExclusiveFullscreen(HWND hwnd) {
         if (!IsWindow(hwnd)) return false;
@@ -129,10 +150,21 @@ namespace utils {
         HWND top = TopLevel(hit);
         if (!top) return nullptr;
 
+        if (IsShellProtected(top)) {
+            // Search z-order for the next eligible top-level under the point
+            return HitTestZOrder(top, pt, [](HWND h) -> HWND {
+                HWND t = TopLevel(h);
+                return (t && !IsShellProtected(t)) ? t : nullptr;
+            });
+        }
+
         if (ContainsPointVisual(top, pt))
             return top;
 
-        return HitTestZOrder(top, pt, [](HWND h) { return TopLevel(h); });
+        return HitTestZOrder(top, pt, [](HWND h) -> HWND {
+            HWND t = TopLevel(h);
+            return (t && !IsShellProtected(t)) ? t : nullptr;
+        });
     }
 
     // Strict/filtered: obeys your previous filtering rules.

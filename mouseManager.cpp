@@ -391,8 +391,7 @@ namespace mm {
                     const int newLeft = pt.x - dragOffset.x;
                     const int newTop = pt.y - dragOffset.y;
 
-                    SetWindowPos(targetWindow, nullptr, newLeft, newTop, width, height,
-                        SWP_NOZORDER | SWP_NOACTIVATE);
+                    SetWindowPos(targetWindow, nullptr, newLeft, newTop, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
 
                     if (!helpers::dwm::GetWindowRectSafe(targetWindow, windowRect))
                         break;

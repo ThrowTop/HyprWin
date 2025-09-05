@@ -28,6 +28,24 @@ ParseWinCombo(const std::vector<std::string>& p, std::string& extra) {
     return SendWinComboParams{ vk, shift };
 }
 
+// parser for: IPCMessage, 0xHEX_CMD, MSG_NAME, WINDOW_CLASS
+inline std::optional<IPCMessageParams>
+ParseIPCMessage(const std::vector<std::string>& p, std::string& extra) {
+    if (p.size() < 4) return std::nullopt;
+
+    IPCMessageParams out{};
+    out.cmd = parse::HexWPARAM(p[1], 0); // returns 0 on parse error
+    if (!out.cmd) return std::nullopt;
+
+    out.regMsgName.assign(p[2].begin(), p[2].end());
+    out.targetClass.assign(p[3].begin(), p[3].end());
+    if (out.regMsgName.empty() || out.targetClass.empty()) return std::nullopt;
+
+    extra = std::format(R"( cmd=0x{:X} msg="{}" class="{}")",
+        static_cast<unsigned long long>(out.cmd), p[2], p[3]);
+    return out;
+}
+
 inline std::optional<RunProcessParams>
 ParseRun(const std::vector<std::string>& p, std::string& extra) {
     if (p.size() < 2) return std::nullopt;
@@ -67,6 +85,7 @@ X(ForceKillWindow,       std::monostate,       ParseNone)       \
 X(FullScreen,            std::monostate,       ParseNone)       \
 X(FullScreenToggle,      std::monostate,       ParseNone)       \
 X(FullScreenPadded,      std::monostate,       ParseNone)       \
+X(IPCMessage,            IPCMessageParams,     ParseIPCMessage) \
 X(MsgBox,                RunProcessParams,     ParseRun)        \
 X(SendWinCombo,          SendWinComboParams,   ParseWinCombo)   \
 X(Run,                   RunProcessParams,     ParseRun)        \

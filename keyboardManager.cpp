@@ -69,6 +69,8 @@ namespace km {
         PostThreadMessage(hookThreadId, WM_NULL, 0, 0);
         ClearAllKeys();
         cv.notify_one();
+        // Notify overlay to refresh status
+        //dispatcher::IPCMessage({ 0xBEEF00FF, L"PCSTATUS_REFRESH_MSG", L"D2DOverlayStatusWnd" });
     }
 
     void KeyboardManager::SetSuperReleasedCallback(std::function<void()> cb) {
@@ -84,7 +86,6 @@ namespace km {
 
             instance->keyQueue.push((wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) ? (kb->vkCode | KEY_DOWN_FLAG) : kb->vkCode);
             instance->cv.notify_one();
-
             if (dwn)
                 return 1;
         }

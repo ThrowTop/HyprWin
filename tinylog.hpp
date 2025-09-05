@@ -104,7 +104,7 @@ namespace tinylog {
     };
 
     struct Msg {
-        Level level;
+        Level level{};
         std::string text;  // formatted UTF-8 payload
         std::thread::id tid;
         std::chrono::system_clock::time_point tp;

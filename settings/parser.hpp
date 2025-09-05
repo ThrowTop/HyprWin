@@ -94,6 +94,22 @@ namespace parse {
         return str;
     }
 
+    inline WPARAM HexWPARAM(const std::string& tok, WPARAM fallback = 0) {
+        if (tok.empty()) return fallback;
+
+        size_t i = 0;
+        if (tok.size() >= 2 && tok[0] == '0' && (tok[1] == 'x' || tok[1] == 'X')) i = 2;
+        if (i >= tok.size()) return fallback;
+
+        unsigned long long v = 0;
+        const char* first = tok.data() + i;
+        const char* last = tok.data() + tok.size();
+        auto [ptr, ec] = std::from_chars(first, last, v, 16);
+        if (ec != std::errc() || ptr != last) return fallback;
+
+        return static_cast<WPARAM>(v);
+    }
+
     inline constexpr std::pair<std::string_view, UINT> kVkPairs[] = {
         {"UP",VK_UP},{"DOWN",VK_DOWN},{"LEFT",VK_LEFT},{"RIGHT",VK_RIGHT},
         {"HOME",VK_HOME},{"END",VK_END},{"PGUP",VK_PRIOR},{"PGDN",VK_NEXT},

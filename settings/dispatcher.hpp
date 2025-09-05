@@ -18,6 +18,7 @@ namespace dispatcher {
     void SetResolution(const SetResolutionParams& p);
     void CycleAudioDevice();
 
+    void IPCMessage(const IPCMessageParams& p);
     void MsgBox(const RunProcessParams& p);
 
     enum class MoveDir : uint8_t { Left, Right };

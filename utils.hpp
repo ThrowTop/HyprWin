@@ -15,7 +15,7 @@
 #endif
 
 #ifdef DBG
-//#define CONFIG_DEBUG
+#define CONFIG_DEBUG
 //#define HOOK_DEBUG
 
 // each thread stores their own name
@@ -29,8 +29,8 @@ inline const char* GetThreadName() {
     return threadName;
 }
 
-#define LOG_THREAD() LOG_D("Thread {} ({}) | {}", GetCurrentThreadId(), GetThreadName(), __FUNCTION__)
-#define SET_THREAD_NAME(name) SetThreadNameInternal(name); LOG_D("Thread {} ({}) | {}", GetCurrentThreadId(), GetThreadName(), __FUNCTION__)
+#define LOG_THREAD() LOG_T("Thread {} ({}) | {}", GetCurrentThreadId(), GetThreadName(), __FUNCTION__)
+#define SET_THREAD_NAME(name) SetThreadNameInternal(name); LOG_T("Thread {} ({}) | {}", GetCurrentThreadId(), GetThreadName(), __FUNCTION__)
 #else
 #define CONSOLE() (void)0 // compiler optimizes to nop while still allowing empty if statements
 #define LOG_THREAD() (void)0

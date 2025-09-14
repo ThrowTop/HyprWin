@@ -30,11 +30,11 @@ namespace km {
             (void)CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
             InputLoop(st);
             CoUninitialize();
-        });
+            });
 
         hookThread = std::jthread([this](std::stop_token st) {
             HookLoop(st);
-        });
+            });
     }
 
     KeyboardManager::~KeyboardManager() {
@@ -70,7 +70,7 @@ namespace km {
         ClearAllKeys();
         cv.notify_one();
         // Notify overlay to refresh status
-        //dispatcher::IPCMessage({ 0xBEEF00FF, L"PCSTATUS_REFRESH_MSG", L"D2DOverlayStatusWnd" });
+        dispatcher::IPCMessage({ 0xBEEF00FF, L"PCSTATUS_REFRESH_MSG", L"D2DOverlayStatusWnd" });
     }
 
     void KeyboardManager::SetSuperReleasedCallback(std::function<void()> cb) {
@@ -99,7 +99,7 @@ namespace km {
             std::unique_lock lock(cvMutex);
             cv.wait(lock, [&] {
                 return st.stop_requested() || (hookHandle && !keyQueue.empty());
-            });
+                });
 
             if (st.stop_requested() || !hookHandle)
                 continue;
@@ -131,7 +131,7 @@ namespace km {
         case VK_SHIFT: case VK_LSHIFT: case VK_RSHIFT:
         case VK_CONTROL: case VK_LCONTROL: case VK_RCONTROL:
         case VK_MENU: case VK_LMENU: case VK_RMENU:
-        return;
+            return;
         }
 
         uint8_t modMask = 0;
@@ -161,7 +161,7 @@ namespace km {
                 std::unique_lock lock(hookCvMutex);
                 hookCv.wait(lock, [&] {
                     return st.stop_requested() || installHookRequested;
-                });
+                    });
 
                 if (st.stop_requested()) break;
 

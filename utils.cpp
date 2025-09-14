@@ -155,7 +155,7 @@ namespace utils {
             return HitTestZOrder(top, pt, [](HWND h) -> HWND {
                 HWND t = TopLevel(h);
                 return (t && !IsShellProtected(t)) ? t : nullptr;
-            });
+                });
         }
 
         if (ContainsPointVisual(top, pt))
@@ -164,7 +164,7 @@ namespace utils {
         return HitTestZOrder(top, pt, [](HWND h) -> HWND {
             HWND t = TopLevel(h);
             return (t && !IsShellProtected(t)) ? t : nullptr;
-        });
+            });
     }
 
     // Strict/filtered: obeys your previous filtering rules.

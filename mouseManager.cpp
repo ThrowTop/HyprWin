@@ -38,10 +38,6 @@ namespace mm {
         cv.notify_all();
         hookCv.notify_all();
         overlayCv.notify_all();
-
-        if (inputThread.joinable()) inputThread.join();
-        if (hookThread.joinable()) hookThread.join();
-        if (overlayThread.joinable()) overlayThread.join();
     }
 
     void MouseManager::InstallHook() {
@@ -451,6 +447,8 @@ namespace mm {
                     overlayVisualOffset = {};
                 }
             }
+
+
 
             windowAction.store((wp == WM_LBUTTONDOWN) ? 1 : 2, std::memory_order_release);
             overlayCv.notify_one();

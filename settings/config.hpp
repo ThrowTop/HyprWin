@@ -21,7 +21,7 @@ private:
         auto add = [&](std::string_view s) {
             if (!out.empty()) out.push_back('+');
             out.append(s);
-        };
+            };
         if (m & LSHIFT) add("LSHIFT");
         if (m & RSHIFT) add("RSHIFT");
         if (m & LCTRL)  add("LCTRL");

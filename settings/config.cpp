@@ -113,7 +113,7 @@ static std::vector<KeyEvent> ExpandLeftRightModifiers(const KeyEvent& base) {
         if (mask & L) return { L };                         // specific L only
         if (mask & R) return { R };                         // specific R only
         return { 0 };                                       // none
-    };
+        };
 
     const auto sVar = choose(base.modMask, LSHIFT, RSHIFT);
     const auto cVar = choose(base.modMask, LCTRL, RCTRL);
@@ -256,10 +256,10 @@ bool Config::LoadConfig(const std::string& filename) {
     case VK_SHIFT: case VK_LSHIFT: case VK_RSHIFT:
     case VK_CONTROL: case VK_LCONTROL: case VK_RCONTROL:
     case VK_MENU: case VK_LMENU: case VK_RMENU:
-    LOG_E("Invalid SUPER: modifiers (Ctrl/Alt/Shift, any side) are not allowed. VK={}", (unsigned)m_settings.SUPER);
-    return false;
+        LOG_E("Invalid SUPER: modifiers (Ctrl/Alt/Shift, any side) are not allowed. VK={}", (unsigned)m_settings.SUPER);
+        return false;
     default:
-    break;
+        break;
     }
 
     return true;

@@ -17,8 +17,6 @@
 #include <chrono>
 #include <thread>
 
-using namespace std::chrono_literals;
-
 constexpr int NOT_ADMIN = 1;
 constexpr int ALREADY_RUNNING = 2;
 constexpr int CONFIG_ERROR = 3;
@@ -49,15 +47,16 @@ int WINAPI WinMain(
     }
 
     tinylog::init({
-        .console = true,
-        .file_path = "hyprwin.log",
-        .console_level = tinylog::Level::Debug,
-        .file_level = tinylog::Level::Trace,
-        .date_format = L"MM'-'dd",
-        .time_format = L"HH':'mm':'ss"
+       .console = true,
+       .file_path = "hyprwin.log",
+       .console_level = tinylog::Level::Debug,
+       .file_level = tinylog::Level::Trace,
+       .date_format = L"MM'-'dd",
+       .time_format = L"HH':'mm':'ss"
         });
 
     SET_THREAD_NAME("Main");
+    SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 
     AppState state;
     if (!state.cfg.LoadConfig()) {
@@ -73,14 +72,14 @@ int WINAPI WinMain(
     std::jthread trayThread([&state, &superVk] {
         SET_THREAD_NAME("tray");
 
-        Tray::Tray tray("Shortcut Manager", (HICON)LoadImageW(
+        Tray::Tray sys_tray("Shortcut Manager", (HICON)LoadImageW(
             GetModuleHandle(nullptr),
             MAKEINTRESOURCE(IDI_HWICON),
             IMAGE_ICON,
             0, 0,
             LR_DEFAULTSIZE | LR_SHARED));
 
-        tray.addEntry(Tray::Button("Exit", [&] {
+        sys_tray.addEntry(Tray::Button("Exit", [&] {
             {
                 std::scoped_lock lock(state.mtx);
                 state.running = false;
@@ -89,7 +88,7 @@ int WINAPI WinMain(
             PostQuitMessage(0);      // end tray loop only
         }));
 
-        tray.addEntry(Tray::Button("Reload", [&] {
+        sys_tray.addEntry(Tray::Button("Reload", [&] {
             Config newCfg;
             if (!newCfg.LoadConfig()) {
                 MessageBoxW(nullptr, L"Config Fuarked", L"Error", MB_OK | MB_ICONERROR);
@@ -102,16 +101,16 @@ int WINAPI WinMain(
             superVk.store(state.cfg.m_settings.SUPER, std::memory_order_relaxed);
         }));
 
-        tray.addEntry(Tray::Separator());
+        sys_tray.addEntry(Tray::Separator());
 
-        tray.addEntry(Tray::Button("Config Folder", [&] {
+        sys_tray.addEntry(Tray::Button("Config Folder", [&] {
             wchar_t path[MAX_PATH]{};
             GetModuleFileNameW(nullptr, path, MAX_PATH);
             if (wchar_t* last = wcsrchr(path, L'\\')) *last = L'\0';
             ShellExecuteW(nullptr, L"open", path, nullptr, nullptr, SW_SHOWNORMAL);
         }));
 
-        tray.run();
+        sys_tray.run();
     });
 
     // Managers
@@ -155,10 +154,11 @@ int WINAPI WinMain(
         lastDown = superDown;
 
         // Lightweight throttle (CPU ~0). If system timer is default, this is ~15.6 ms.
-        std::this_thread::sleep_for(5ms);
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 
     // Cleanup
+
     if (mutex) CloseHandle(mutex);
     return EXIT_SUCCESS;
 }

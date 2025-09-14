@@ -100,6 +100,7 @@ void OverlayWindow::Resize(int width, int height) {
     if (!renderTarget) return;
 
     renderTarget->Resize(D2D1::SizeU(width, height));
+    renderTarget->SetDpi(96.0f, 96.0f);
 
     if (gradient && !rotating) {
         CreateGradientBrushes();
@@ -107,7 +108,6 @@ void OverlayWindow::Resize(int width, int height) {
 
     thicknessOuter = std::floor(borderThickness / 2.0f);
     thicknessInner = borderThickness - thicknessOuter;
-    const float radius = 8.0f;
 
     outerRounded.rect = D2D1::RectF(
         thicknessOuter * 0.5f,
@@ -115,8 +115,6 @@ void OverlayWindow::Resize(int width, int height) {
         static_cast<float>(width) - thicknessOuter * 0.5f,
         static_cast<float>(height) - thicknessOuter * 0.5f
     );
-    outerRounded.radiusX = radius;
-    outerRounded.radiusY = radius;
 
     // Inner stroke is centered inward from the outer stroke
     innerRounded.rect = D2D1::RectF(
@@ -125,8 +123,6 @@ void OverlayWindow::Resize(int width, int height) {
         static_cast<float>(width) - thicknessOuter - thicknessInner * 0.5f,
         static_cast<float>(height) - thicknessOuter - thicknessInner * 0.5f
     );
-    innerRounded.radiusX = radius - thicknessInner;
-    innerRounded.radiusY = radius - thicknessInner;
 
     Render();
 }
@@ -192,9 +188,6 @@ void OverlayWindow::Render() {
     if (!renderTarget || !brush || !fadeBrush) return;
 
     static auto lastTime = std::chrono::steady_clock::now();
-
-    const float radius = 8.0f;
-
     if (gradient && rotating) {
         auto now = std::chrono::steady_clock::now();
         float deltaTime = std::chrono::duration<float>(now - lastTime).count();
@@ -224,6 +217,15 @@ void OverlayWindow::Render() {
 
 void OverlayWindow::PreRender(const std::function<bool()>& condition, const std::function<void()>& onFrame) {
     Show();
+
+    const UINT dpi = GetDpiForWindow(hwnd);
+    m_radius = default_radius * (dpi / 96.0f);
+    outerRounded.radiusX = m_radius;
+    outerRounded.radiusY = m_radius;
+    float innerR = m_radius - thicknessInner;
+    if (innerR < 0.0f) innerR = 0.0f;
+    innerRounded.radiusX = innerR;
+    innerRounded.radiusY = innerR;
 
     while (condition()) {
         if (onFrame) onFrame();

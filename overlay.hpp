@@ -66,6 +66,8 @@ private:
     D2D1_ROUNDED_RECT outerRounded{};
     D2D1_ROUNDED_RECT innerRounded{};
 
+    const float default_radius = 8.0f;
+    float m_radius = default_radius;
     float borderThickness = 4.0f;
     float thicknessOuter = std::floor(borderThickness / 2.0f);
     float thicknessInner = borderThickness - thicknessOuter;

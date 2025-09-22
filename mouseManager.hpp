@@ -8,70 +8,71 @@
 #include "settings/config.hpp"
 
 namespace mm {
-    inline std::atomic<short> windowAction = 0;
+inline std::atomic<short> windowAction = 0;
 
-    class MouseManager {
-    public:
-        MouseManager(HINSTANCE hi, Config* cfg);
-        ~MouseManager();
+class MouseManager {
+  public:
+    MouseManager(HINSTANCE hi, Config* cfg);
+    ~MouseManager();
 
-        void InstallHook();
-        void UninstallHook();
-    private:
-        static LRESULT CALLBACK MouseProc(int code, WPARAM wParam, LPARAM lParam);
-        void InputLoop(std::stop_token st);
-        void HookLoop(std::stop_token st);
-        void OverlayLoop(std::stop_token st);
-        void ProcessMouse(WPARAM wp);
+    void InstallHook();
+    void UninstallHook();
 
-        static inline MouseManager* instance = nullptr;
-        Config* config = nullptr;
+  private:
+    static LRESULT CALLBACK MouseProc(int code, WPARAM wParam, LPARAM lParam);
+    void InputLoop(std::stop_token st);
+    void HookLoop(std::stop_token st);
+    void OverlayLoop(std::stop_token st);
+    void ProcessMouse(WPARAM wp);
 
-        HHOOK hookHandle = nullptr;
-        DWORD hookThreadId = 0;
+    static inline MouseManager* instance = nullptr;
+    Config* config = nullptr;
 
-        std::jthread inputThread;
-        std::jthread hookThread;
-        std::jthread overlayThread;
+    HHOOK hookHandle = nullptr;
+    DWORD hookThreadId = 0;
 
-        std::stop_token inputToken;
-        std::stop_token hookToken;
-        std::stop_token overlayToken;
+    std::jthread inputThread;
+    std::jthread hookThread;
+    std::jthread overlayThread;
 
-        std::condition_variable overlayCv;
-        std::mutex overlayCvMutex;
+    std::stop_token inputToken;
+    std::stop_token hookToken;
+    std::stop_token overlayToken;
 
-        std::condition_variable cv;
-        std::mutex cvMutex;
+    std::condition_variable overlayCv;
+    std::mutex overlayCvMutex;
 
-        std::condition_variable hookCv;
-        std::mutex hookCvMutex;
+    std::condition_variable cv;
+    std::mutex cvMutex;
 
-        RECT overlayVisualOffset = {}; // left/top/right/bottom deltas relative to real rect
+    std::condition_variable hookCv;
+    std::mutex hookCvMutex;
 
-        SIZE minSize = { 1, 1 };
-        SIZE maxSize = { INT_MAX, INT_MAX };
+    RECT overlayVisualOffset = {}; // left/top/right/bottom deltas relative to real rect
 
-        std::atomic<bool> overlayInitialized{ false };
-        std::atomic<bool> overlayShouldInit{ false };
-        std::atomic<RECT> overlayBounds = {};
+    SIZE minSize = {1, 1};
+    SIZE maxSize = {INT_MAX, INT_MAX};
 
-        std::atomic<POINT> latestMousePos = { POINT{0,0} };
-        std::atomic<POINT> lastDownPt{ POINT{0,0} };
+    std::atomic<bool> overlayInitialized{false};
+    std::atomic<bool> overlayShouldInit{false};
+    std::atomic<RECT> overlayBounds = {};
 
-        POINT dragOffset = {};
-        POINT resizeStartCursor = {};
-        RECT resizeStartRect = {};
+    std::atomic<POINT> latestMousePos = {POINT{0, 0}};
+    std::atomic<POINT> lastDownPt{POINT{0, 0}};
 
-        HWND targetWindow = nullptr;
+    POINT dragOffset = {};
+    POINT resizeStartCursor = {};
+    RECT resizeStartRect = {};
 
-        bool installHookRequested = false;
-        bool uninstallHookRequested = false;
+    HWND targetWindow = nullptr;
 
-        LockFreeQueue<WPARAM, 8> mouseQueue;
+    bool installHookRequested = false;
+    bool uninstallHookRequested = false;
 
-        ResizeCorner resizeCorner = ResizeCorner::BottomRight; // default
+    LockFreeQueue<WPARAM, 16> mouseQueue;
 
-        HINSTANCE hInstance;
-    };
-}
+    ResizeCorner resizeCorner = ResizeCorner::BottomRight; // default
+
+    HINSTANCE hInstance;
+};
+} // namespace mm

@@ -10,58 +10,60 @@
 #include "settings/config.hpp"
 
 namespace km {
-    class KeyboardManager {
-    public:
-        KeyboardManager(Config* cfg);
-        ~KeyboardManager();
+class KeyboardManager {
+  public:
+    KeyboardManager(Config* cfg);
+    ~KeyboardManager();
 
-        void InstallHook();
-        void UninstallHook();
+    void InstallHook();
+    void UninstallHook();
 
-        void SetSuperReleasedCallback(std::function<void()> cb);
-    private:
-        static LRESULT CALLBACK HookProc(int code, WPARAM wParam, LPARAM lParam);
-        void InputLoop(std::stop_token st);
-        void HookLoop(std::stop_token st);
-        void ProcessKey(UINT wp);
+    void SetSuperReleasedCallback(std::function<void()> cb);
 
-        inline bool IsKeySet(int vk) const {
-            return (keyBits[vk >> 6] >> (vk & 63)) & 1;
-        }
+  private:
+    static LRESULT CALLBACK HookProc(int code, WPARAM wParam, LPARAM lParam);
+    void InputLoop(std::stop_token st);
+    void HookLoop(std::stop_token st);
+    void ProcessKey(UINT wp);
 
-        inline void SetKey(int vk) {
-            keyBits[vk >> 6] |= (1ull << (vk & 63));
-        }
+    inline bool IsKeySet(int vk) const {
+        return (keyBits[vk >> 6] >> (vk & 63)) & 1;
+    }
 
-        inline void ClearKey(int vk) {
-            keyBits[vk >> 6] &= ~(1ull << (vk & 63));
-        }
+    inline void SetKey(int vk) {
+        keyBits[vk >> 6] |= (1ull << (vk & 63));
+    }
 
-        inline void ClearAllKeys() {
-            for (auto& bits : keyBits) bits = 0;
-        }
+    inline void ClearKey(int vk) {
+        keyBits[vk >> 6] &= ~(1ull << (vk & 63));
+    }
 
-        static inline KeyboardManager* instance = nullptr;
-        Config* config = nullptr;
+    inline void ClearAllKeys() {
+        for (auto& bits : keyBits)
+            bits = 0;
+    }
 
-        std::function<void()> superReleasedCallback;
+    static inline KeyboardManager* instance = nullptr;
+    Config* config = nullptr;
 
-        HHOOK hookHandle = nullptr;
-        DWORD hookThreadId = 0;
+    std::function<void()> superReleasedCallback;
 
-        std::jthread inputThread;
-        std::jthread hookThread;
+    HHOOK hookHandle = nullptr;
+    DWORD hookThreadId = 0;
 
-        std::condition_variable cv;
-        std::mutex cvMutex;
+    std::jthread inputThread;
+    std::jthread hookThread;
 
-        std::condition_variable hookCv;
-        std::mutex hookCvMutex;
+    std::condition_variable cv;
+    std::mutex cvMutex;
 
-        bool installHookRequested = false;
-        bool uninstallHookRequested = false;
+    std::condition_variable hookCv;
+    std::mutex hookCvMutex;
 
-        LockFreeQueue<UINT, 32> keyQueue;
-        uint64_t keyBits[4]{};
-    };
-}
+    bool installHookRequested = false;
+    bool uninstallHookRequested = false;
+
+    LockFreeQueue<UINT, 32> keyQueue;
+    uint64_t keyBits[4]{};
+};
+} // namespace km

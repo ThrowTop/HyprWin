@@ -8,10 +8,11 @@
 #include <vector>
 #include <mmreg.h>
 
-#include "utils.hpp"
+#include "utils/utils.hpp"
+#include "tinylog.hpp"
 
 class AudioDeviceManager {
-private:
+  private:
     AudioDeviceManager() {
         (void)CLSIDFromString(L"{870af99c-171d-4f9e-af0d-e63df40c2bc9}", &policyClsid);
         updateDevices();
@@ -23,7 +24,7 @@ private:
     AudioDeviceManager(AudioDeviceManager&&) = delete;
     AudioDeviceManager& operator=(AudioDeviceManager&&) = delete;
 
-public:
+  public:
     struct AudioDeviceInfo {
         std::wstring name;
         std::wstring id;
@@ -52,8 +53,7 @@ public:
         CComPtr<IMMDeviceEnumerator> enumerator;
         CComPtr<IMMDeviceCollection> collection;
 
-        if (FAILED(CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
-            __uuidof(IMMDeviceEnumerator), (void**)&enumerator))) {
+        if (FAILED(CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&enumerator))) {
             return;
         }
 
@@ -66,13 +66,15 @@ public:
 
         for (UINT i = 0; i < count; ++i) {
             CComPtr<IMMDevice> device;
-            if (FAILED(collection->Item(i, &device))) continue;
+            if (FAILED(collection->Item(i, &device)))
+                continue;
 
             CComHeapPtr<WCHAR> id;
             device->GetId(&id);
 
             CComPtr<IPropertyStore> props;
-            if (FAILED(device->OpenPropertyStore(STGM_READ, &props))) continue;
+            if (FAILED(device->OpenPropertyStore(STGM_READ, &props)))
+                continue;
 
             PROPVARIANT nameProp;
             PropVariantInit(&nameProp);
@@ -81,7 +83,7 @@ public:
             std::wstring name = nameProp.pwszVal ? nameProp.pwszVal : L"";
             PropVariantClear(&nameProp);
 
-            devices.push_back({ name, std::wstring(id) });
+            devices.push_back({name, std::wstring(id)});
         }
 
         auto id = getCurrentDefaultRenderDeviceId();
@@ -89,17 +91,15 @@ public:
         currentName.clear();
 
         if (!id.empty()) {
-            auto it = std::find_if(devices.begin(), devices.end(), [&](const auto& dev) {
-                return dev.id == id;
-            });
-            if (it != devices.end()) currentName = it->name;
+            auto it = std::find_if(devices.begin(), devices.end(), [&](const auto& dev) { return dev.id == id; });
+            if (it != devices.end())
+                currentName = it->name;
         }
     }
 
     bool setDefaultDevice(const std::wstring& deviceId) const {
         CComPtr<IPolicyConfig> pc;
-        HRESULT hr = CoCreateInstance(policyClsid, nullptr, CLSCTX_ALL,
-            __uuidof(IPolicyConfig), (void**)&pc);
+        HRESULT hr = CoCreateInstance(policyClsid, nullptr, CLSCTX_ALL, __uuidof(IPolicyConfig), (void**)&pc);
         if (FAILED(hr)) {
             LOG_E("PolicyConfig CoCreateInstance failed: 0x{:08X}", (unsigned)hr);
             return false;
@@ -116,11 +116,10 @@ public:
 
     bool cycleToNextDevice() {
         updateDevices();
-        if (currentId.empty() || devices.empty()) return false;
+        if (currentId.empty() || devices.empty())
+            return false;
 
-        auto it = std::find_if(devices.begin(), devices.end(), [&](const auto& dev) {
-            return dev.id == currentId;
-        });
+        auto it = std::find_if(devices.begin(), devices.end(), [&](const auto& dev) { return dev.id == currentId; });
         int currentIndex = it != devices.end() ? static_cast<int>(std::distance(devices.begin(), it)) : -1;
 
         int nextIndex = (currentIndex + 1) % devices.size();
@@ -154,12 +153,10 @@ public:
         for (const auto& dev : devices) {
             if (dev.name.find(targetPattern) != std::wstring::npos) {
                 if (setDefaultDevice(dev.id)) {
-                    //LOG_E("Switched to: {}", dev.name);
                     currentId = dev.id;
                     currentName = dev.name;
                     return true;
-                }
-                else {
+                } else {
                     //LOG_E("Failed to set device: {}", dev.name);
                     return false;
                 }
@@ -170,7 +167,7 @@ public:
         return false;
     }
 
-private:
+  private:
     CLSID policyClsid;
     std::vector<AudioDeviceInfo> devices;
     std::wstring currentId;
@@ -197,8 +194,7 @@ private:
         CComPtr<IMMDevice> defaultDevice;
         CComHeapPtr<WCHAR> defaultId;
 
-        if (FAILED(CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
-            __uuidof(IMMDeviceEnumerator), (void**)&enumerator))) {
+        if (FAILED(CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&enumerator))) {
             return L"";
         }
 

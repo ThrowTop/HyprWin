@@ -1,5 +1,5 @@
 #pragma once
-#include "utils.hpp"
+#include "utils/utils.hpp"
 #include <Windows.h>
 #include <d2d1.h>
 #include <functional>
@@ -8,7 +8,8 @@
 template <typename T>
 concept com_obj = std::is_base_of<IUnknown, T>::value;
 
-template <com_obj T> static inline void SafeRelease(T** ppT) {
+template <com_obj T>
+static inline void SafeRelease(T** ppT) {
     if (*ppT) {
         (*ppT)->Release();
         *ppT = nullptr;

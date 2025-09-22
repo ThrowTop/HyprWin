@@ -21,7 +21,7 @@
     <ClCompile Include="keyboardManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="utils.cpp">
+    <ClCompile Include="utils\utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="mouseManager.cpp">
@@ -39,15 +39,15 @@
     <ClCompile Include="settings\dispatcher.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="helpers\dwm.cpp">
+    <ClCompile Include="utils\dwm.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="helpers\mon.cpp">
+    <ClCompile Include="utils\mon.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="utils.hpp">
+    <ClInclude Include="utils\utils.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="lockfreequeue.hpp">
@@ -86,10 +86,10 @@
     <ClInclude Include="settings\action_registry.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="helpers\dwm.hpp">
+    <ClInclude Include="utils\dwm.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="helpers\mon.hpp">
+    <ClInclude Include="utils\mon.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="settings\action_vec.hpp">

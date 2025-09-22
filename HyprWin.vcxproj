@@ -176,8 +176,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="helpers\dwm.cpp" />
-    <ClCompile Include="helpers\mon.cpp" />
+    <ClCompile Include="utils\dwm.cpp" />
+    <ClCompile Include="utils\mon.cpp" />
     <ClCompile Include="settings\config.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="mouseManager.cpp" />
@@ -188,12 +188,12 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="settings\dispatcher.cpp" />
-    <ClCompile Include="utils.cpp" />
+    <ClCompile Include="utils\utils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="audioDeviceManager.hpp" />
-    <ClInclude Include="helpers\dwm.hpp" />
-    <ClInclude Include="helpers\mon.hpp" />
+    <ClInclude Include="utils\dwm.hpp" />
+    <ClInclude Include="utils\mon.hpp" />
     <ClInclude Include="settings\action_types.hpp" />
     <ClInclude Include="settings\action_registry.hpp" />
     <ClInclude Include="settings\action_vec.hpp" />
@@ -210,7 +210,7 @@
     <ClInclude Include="tray\assets.hpp" />
     <ClInclude Include="tray\components.hpp" />
     <ClInclude Include="tray\tray.hpp" />
-    <ClInclude Include="utils.hpp" />
+    <ClInclude Include="utils\utils.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="config.ini" />

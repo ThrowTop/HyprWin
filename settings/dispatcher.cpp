@@ -17,27 +17,17 @@
 namespace dispatcher {
     void KillWindow() {
         HWND hwnd = utils::GetFilteredWindow();
+        if (!hwnd) return;
 
-        DWORD pid = 0;
-        GetWindowThreadProcessId(hwnd, &pid);
-        if (!pid) return;
 
-        HANDLE hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
-        if (!hProc) return;
-
-        wchar_t path[MAX_PATH]{};
-        DWORD size = MAX_PATH;
-        if (QueryFullProcessImageNameW(hProc, 0, path, &size)) {
-            const wchar_t* fname = wcsrchr(path, L'\\');
-            fname = fname ? fname + 1 : path;
-            if (_wcsicmp(fname, L"obs64.exe") == 0 || _wcsicmp(fname, L"obs32.exe") == 0) {
-                CloseHandle(hProc);
-                return;
-            }
+        std::wstring name = utils::GetProcessName(hwnd);
+        if (!_wcsicmp(name.c_str(), L"obs64.exe") ||
+            !_wcsicmp(name.c_str(), L"obs32.exe")) {
+            PostMessageW(hwnd, WM_SYSCOMMAND, SC_MINIMIZE, 0);
         }
-        CloseHandle(hProc);
-
-        if (hwnd) PostMessageW(hwnd, WM_CLOSE, 0, 0);
+        else {
+            PostMessageW(hwnd, WM_CLOSE, 0, 0);
+        }
     }
 
     void ForceKillWindow() {

@@ -155,7 +155,7 @@ namespace utils {
             return HitTestZOrder(top, pt, [](HWND h) -> HWND {
                 HWND t = TopLevel(h);
                 return (t && !IsShellProtected(t)) ? t : nullptr;
-                });
+            });
         }
 
         if (ContainsPointVisual(top, pt))
@@ -164,7 +164,7 @@ namespace utils {
         return HitTestZOrder(top, pt, [](HWND h) -> HWND {
             HWND t = TopLevel(h);
             return (t && !IsShellProtected(t)) ? t : nullptr;
-            });
+        });
     }
 
     // Strict/filtered: obeys your previous filtering rules.
@@ -193,6 +193,25 @@ namespace utils {
         GetCursorPos(&pt);
         return GetFilteredWindow(pt);
     }
+
+    std::wstring GetProcessName(HWND hwnd) {
+        DWORD pid = 0;
+        if (!GetWindowThreadProcessId(hwnd, &pid) || !pid) return {};
+
+        HANDLE hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+        if (!hProc) return {};
+
+        wchar_t path[MAX_PATH] = {};
+        DWORD size = MAX_PATH;
+        std::wstring result;
+        if (QueryFullProcessImageNameW(hProc, 0, path, &size)) {
+            const wchar_t* fname = wcsrchr(path, L'\\');
+            result = fname ? fname + 1 : path;
+        }
+        CloseHandle(hProc);
+        return result;
+    }
+
 
     // -------- Focus and elevation --------
 

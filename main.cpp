@@ -3,7 +3,10 @@
 #include "utils.hpp"
 #include "lockfreequeue.hpp"
 
-#include "lib/tray/include/tray.hpp"
+//#include "lib/tray/include/tray.hpp"
+
+#include "tray/tray.hpp"
+
 #include "keyboardManager.hpp"
 #include "mouseManager.hpp"
 
@@ -16,6 +19,9 @@
 #include <atomic>
 #include <chrono>
 #include <thread>
+
+#include <ShlObj.h> // Icon Definitions
+#pragma comment(lib, "shell32.lib")
 
 constexpr int NOT_ADMIN = 1;
 constexpr int ALREADY_RUNNING = 2;
@@ -30,30 +36,25 @@ struct AppState {
     std::condition_variable cv;
 };
 
-int WINAPI WinMain(
-    _In_ HINSTANCE hInstance,
-    _In_opt_ HINSTANCE hPrevInstance,
-    _In_ LPSTR lpCmdLine,
-    _In_ int nShowCmd
-) {
-    if (!utils::EnsureRunAsAdminAndExitIfNot()) return NOT_ADMIN;
+int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd) {
+    if (!utils::EnsureRunAsAdminAndExitIfNot())
+        return NOT_ADMIN;
 
     HANDLE mutex = CreateMutexW(nullptr, FALSE, L"HyprWindows");
-    if (!mutex) return MUTEX_ERROR;
+    if (!mutex)
+        return MUTEX_ERROR;
     if (GetLastError() == ERROR_ALREADY_EXISTS) {
         MessageBoxW(nullptr, L"Another instance is already running.", L"Error", MB_OK | MB_ICONERROR);
         CloseHandle(mutex);
         return ALREADY_RUNNING;
     }
 
-    tinylog::init({
-       .console = true,
-       .file_path = "hyprwin.log",
-       .console_level = tinylog::Level::Debug,
-       .file_level = tinylog::Level::Trace,
-       .date_format = L"MM'-'dd",
-       .time_format = L"HH':'mm':'ss"
-        });
+    tinylog::init({.console = true,
+      .file_path = "hyprwin.log",
+      .console_level = tinylog::Level::Debug,
+      .file_level = tinylog::Level::Trace,
+      .date_format = L"MM'-'dd",
+      .time_format = L"HH':'mm':'ss"});
 
     SET_THREAD_NAME("Main");
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
@@ -65,50 +66,55 @@ int WINAPI WinMain(
         return CONFIG_ERROR;
     }
 
-    // Shared SUPER vk for lock-free reads in the supervisor loop.
-    std::atomic<UINT> superVk{ state.cfg.m_settings.SUPER };
+    std::atomic<UINT> superVk{state.cfg.m_settings.SUPER};
 
     // Tray thread (its own message loop)
     std::jthread trayThread([&state, &superVk] {
+        using namespace std::chrono_literals;
         SET_THREAD_NAME("tray");
 
-        Tray::Tray sys_tray("Shortcut Manager", (HICON)LoadImageW(
-            GetModuleHandle(nullptr),
-            MAKEINTRESOURCE(IDI_HWICON),
-            IMAGE_ICON,
-            0, 0,
-            LR_DEFAULTSIZE | LR_SHARED));
+        Tray::Tray sys_tray(L"HyprWin.Tray", IDI_HWICON);
+        sys_tray.setTooltip(L"HyprWin");
+        sys_tray.DarkMode(Tray::dark::AppModeForceDark);
 
-        sys_tray.addEntry(Tray::Button("Exit", [&] {
+        sys_tray
+          .addEntry(Tray::Button(L"Reload Config",
+            [&] {
+                Config newCfg;
+                if (!newCfg.LoadConfig()) {
+                    MessageBoxW(nullptr, L"Config Fuarked", L"Error", MB_OK | MB_ICONERROR);
+                    return;
+                }
+                {
+                    std::scoped_lock lock(state.mtx);
+                    state.cfg = std::move(newCfg);
+                }
+                superVk.store(state.cfg.m_settings.SUPER, std::memory_order_relaxed);
+            }))
+          ->setGlyphIcon(Tray::Icon(IDI_HWICON));
+
+        sys_tray
+          .addEntry(Tray::Button(L"Open Config Folder",
+            [&] {
+                wchar_t path[MAX_PATH]{};
+                GetModuleFileNameW(nullptr, path, MAX_PATH);
+                if (wchar_t* last = wcsrchr(path, L'\\'))
+                    *last = L'\0';
+                ShellExecuteW(nullptr, L"open", path, nullptr, nullptr, SW_SHOWNORMAL);
+            }))
+          ->setGlyphIcon(Tray::Icon::FromStock(SIID_FOLDEROPEN));
+
+        sys_tray.addEntry(Tray::Separator());
+
+        auto btnExit = sys_tray.addEntry(Tray::Button(L"Exit", [&] {
             {
                 std::scoped_lock lock(state.mtx);
                 state.running = false;
             }
-            state.cv.notify_one();   // wake main supervisor if waiting
-            PostQuitMessage(0);      // end tray loop only
+            state.cv.notify_one();
+            sys_tray.exit();
         }));
-
-        sys_tray.addEntry(Tray::Button("Reload", [&] {
-            Config newCfg;
-            if (!newCfg.LoadConfig()) {
-                MessageBoxW(nullptr, L"Config Fuarked", L"Error", MB_OK | MB_ICONERROR);
-                return;
-            }
-            {
-                std::scoped_lock lock(state.mtx);
-                state.cfg = std::move(newCfg);
-            }
-            superVk.store(state.cfg.m_settings.SUPER, std::memory_order_relaxed);
-        }));
-
-        sys_tray.addEntry(Tray::Separator());
-
-        sys_tray.addEntry(Tray::Button("Config Folder", [&] {
-            wchar_t path[MAX_PATH]{};
-            GetModuleFileNameW(nullptr, path, MAX_PATH);
-            if (wchar_t* last = wcsrchr(path, L'\\')) *last = L'\0';
-            ShellExecuteW(nullptr, L"open", path, nullptr, nullptr, SW_SHOWNORMAL);
-        }));
+        btnExit->setGlyphIcon(Tray::Icon(LoadIconW(nullptr, IDI_HAND)));
 
         sys_tray.run();
     });
@@ -134,7 +140,6 @@ int WINAPI WinMain(
             lastDown = false;
             lastVk = vk;
         }
-
         const bool superDown = (GetAsyncKeyState(vk) & 0x8000) != 0;
 
         if (superDown && !lastDown) {
@@ -159,6 +164,7 @@ int WINAPI WinMain(
 
     // Cleanup
 
-    if (mutex) CloseHandle(mutex);
+    if (mutex)
+        CloseHandle(mutex);
     return EXIT_SUCCESS;
 }

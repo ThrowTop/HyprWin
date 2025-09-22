@@ -29,8 +29,8 @@ inline const char* GetThreadName() {
     return threadName;
 }
 
-#define LOG_THREAD() LOG_T("Thread {} ({}) | {}", GetCurrentThreadId(), GetThreadName(), __FUNCTION__)
-#define SET_THREAD_NAME(name) SetThreadNameInternal(name); LOG_T("Thread {} ({}) | {}", GetCurrentThreadId(), GetThreadName(), __FUNCTION__)
+#define LOG_THREAD() LOG_D("Thread {} ({}) | {}", GetCurrentThreadId(), GetThreadName(), __FUNCTION__)
+#define SET_THREAD_NAME(name) SetThreadNameInternal(name); LOG_D("Thread {} ({}) | {}", GetCurrentThreadId(), GetThreadName(), __FUNCTION__)
 #else
 #define CONSOLE() (void)0 // compiler optimizes to nop while still allowing empty if statements
 #define LOG_THREAD() (void)0
@@ -72,6 +72,7 @@ namespace utils {
     // Convenience overloads that use the current cursor position.
     HWND GetWindow();
     HWND GetFilteredWindow();
+    std::wstring GetProcessName(HWND hwnd);
 
     inline POINT Center(const RECT& r) { return POINT{ (r.left + r.right) / 2, (r.top + r.bottom) / 2 }; }
 

@@ -8,8 +8,7 @@
 template <typename T>
 concept com_obj = std::is_base_of<IUnknown, T>::value;
 
-template <com_obj T>
-static inline void SafeRelease(T** ppT) {
+template <com_obj T> static inline void SafeRelease(T** ppT) {
     if (*ppT) {
         (*ppT)->Release();
         *ppT = nullptr;
@@ -19,7 +18,7 @@ static inline void SafeRelease(T** ppT) {
 const wchar_t* const kOverlayClassName = L"OverlayWndClass";
 
 class OverlayWindow {
-public:
+  public:
     OverlayWindow();
     ~OverlayWindow();
 
@@ -33,7 +32,9 @@ public:
     void PreRender(const std::function<bool()>& condition, const std::function<void()>& onFrame);
     void SetColor(const D2D1_COLOR_F& color);
     void SetGradient(const D2D1_COLOR_F& start, const D2D1_COLOR_F& end, float angleDeg = 0.f, bool rotating = false, float rotationSpeed = 90.f);
-    HWND GetHwnd() const { return hwnd; }
+    HWND GetHwnd() const {
+        return hwnd;
+    }
 
     inline void SetBorderThickness(float bt) {
         borderThickness = bt;
@@ -41,7 +42,7 @@ public:
         thicknessInner = bt - thicknessOuter;
     };
 
-private:
+  private:
     void CreateGradientBrushes();
 
     HWND hwnd = nullptr;

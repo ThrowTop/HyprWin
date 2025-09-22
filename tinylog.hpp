@@ -1,5 +1,4 @@
 // tinylog.hpp - header-only logger for Windows, C++20+
-// ASCII only. No external deps.
 // Features:
 // - Console and file sinks
 // - Per-sink runtime level filters (console_level, file_level)
@@ -34,7 +33,6 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
-#include <cstdint>
 #include <cstdio>
 #include <deque>
 #include <fstream>
@@ -49,7 +47,6 @@
 #include <utility>
 #include <format>
 #include <tuple>
-#include <vector>
 
 #define NOMINMAX
 #include <windows.h>
@@ -122,36 +119,42 @@ namespace tinylog {
             if (running_) return;
             opts_ = std::move(opts);
 
+            auto wire_stdio_to_console = [] {
+                FILE* fp = nullptr;
+                freopen_s(&fp, "CONOUT$", "w", stdout);
+                freopen_s(&fp, "CONOUT$", "w", stderr);
+                freopen_s(&fp, "CONIN$", "r", stdin);  // IMPORTANT: make STDIN valid
+                std::ios::sync_with_stdio(false);
+                std::cout.clear(); std::cerr.clear(); std::cin.clear();
+            };
+
             auto disable_quick_edit = [] {
                 HANDLE hIn = GetStdHandle(STD_INPUT_HANDLE);
-                if (hIn == INVALID_HANDLE_VALUE || hIn == nullptr) return;
+                if (hIn == nullptr || hIn == INVALID_HANDLE_VALUE) return;
+
                 DWORD mode = 0;
                 if (!GetConsoleMode(hIn, &mode)) return;
 
-                mode |= ENABLE_EXTENDED_FLAGS;
-                mode &= ~ENABLE_QUICK_EDIT_MODE; // disable freeze-on-select
-                mode &= ~ENABLE_INSERT_MODE;     // optional: stop accidental paste
-                mode |= ENABLE_MOUSE_INPUT;      // keep scrollwheel support
+                // Step 1: ensure extended flags are enabled
+                DWORD mode1 = mode | ENABLE_EXTENDED_FLAGS;
+                SetConsoleMode(hIn, mode1);
 
-                SetConsoleMode(hIn, mode);
+                // Step 2: actually turn off Quick Edit (and optionally Insert)
+                mode1 &= ~ENABLE_QUICK_EDIT_MODE;
+                mode1 &= ~ENABLE_INSERT_MODE; // optional
+                // leave other bits (like ENABLE_PROCESSED_INPUT) untouched
+                SetConsoleMode(hIn, mode1);
             };
+
 
             if (opts_.console) {
                 if (AllocConsole()) {
                     owns_console_ = true;
-                    FILE* fp = nullptr;
-                    freopen_s(&fp, "CONOUT$", "w", stdout);
-                    freopen_s(&fp, "CONOUT$", "w", stderr);
-                    std::ios::sync_with_stdio(false);
-                    std::cout.clear();
-                    std::cerr.clear();
-                    disable_quick_edit();
                 }
-                else {
-                    owns_console_ = false;
-                    disable_quick_edit();
-                }
+                wire_stdio_to_console();
+                disable_quick_edit();
             }
+
 
             if (!opts_.file_path.empty()) {
                 file_.emplace(opts_.file_path, std::ios::out | std::ios::app | std::ios::binary);
@@ -264,30 +267,54 @@ namespace tinylog {
             }
         }
 
-        // Build timestamp prefix using WinAPI format strings and UTF-8 output.
-        std::string make_prefix(const Msg& m) {
-            SYSTEMTIME st;
-            if (opts_.utc) GetSystemTime(&st);
-            else           GetLocalTime(&st);
 
+
+        std::string make_prefix(const Msg& m) {
+            // 1) split tp into seconds + millisecond remainder
+            const auto tp_ms = std::chrono::time_point_cast<std::chrono::milliseconds>(m.tp);
+            const auto ms_part = static_cast<unsigned>(tp_ms.time_since_epoch().count() % 1000);
+
+            // 2) convert to time_t for tm (UTC or local)
+            const std::time_t tt = std::chrono::system_clock::to_time_t(m.tp);
+            std::tm tm{};
+            if (opts_.utc) {
+                gmtime_s(&tm, &tt);
+            }
+            else {
+                localtime_s(&tm, &tt);
+            }
+
+            // 3) build SYSTEMTIME from call time (not "now")
+            SYSTEMTIME st{};
+            st.wYear = static_cast<WORD>(tm.tm_year + 1900);
+            st.wMonth = static_cast<WORD>(tm.tm_mon + 1);
+            st.wDay = static_cast<WORD>(tm.tm_mday);
+            st.wHour = static_cast<WORD>(tm.tm_hour);
+            st.wMinute = static_cast<WORD>(tm.tm_min);
+            st.wSecond = static_cast<WORD>(tm.tm_sec);
+            st.wMilliseconds = static_cast<WORD>(ms_part);
+
+            // 4) format using Windows patterns
             wchar_t dateBuf[128]{};
             wchar_t timeBuf[128]{};
 
-            // LOCALE_NAME_USER_DEFAULT ensures user locale. Patterns are Windows-style.
-            GetDateFormatEx(LOCALE_NAME_USER_DEFAULT, 0, &st,
+            GetDateFormatEx(
+                LOCALE_NAME_USER_DEFAULT, 0, &st,
                 opts_.date_format.empty() ? L"yyyy'-'MM'-'dd" : opts_.date_format.c_str(),
-                dateBuf, static_cast<int>(std::size(dateBuf)), nullptr);
+                dateBuf, static_cast<int>(std::size(dateBuf)), nullptr
+            );
 
-            GetTimeFormatEx(LOCALE_NAME_USER_DEFAULT, 0, &st,
+            GetTimeFormatEx(
+                LOCALE_NAME_USER_DEFAULT, 0, &st,
                 opts_.time_format.empty() ? L"HH':'mm':'ss" : opts_.time_format.c_str(),
-                timeBuf, static_cast<int>(std::size(timeBuf)));
+                timeBuf, static_cast<int>(std::size(timeBuf))
+            );
 
-            // Assemble datetime + ms in UTF-8.
             std::wstring wdt = std::wstring(dateBuf) + L" " + std::wstring(timeBuf);
             std::string dt = WideToUtf8(wdt);
+
             char msbuf[8];
-            int n = std::snprintf(msbuf, sizeof(msbuf), ".%03u", static_cast<unsigned>(st.wMilliseconds));
-            if (n < 0) n = 0;
+            std::snprintf(msbuf, sizeof(msbuf), ".%03u", st.wMilliseconds);
 
             std::ostringstream oss;
             oss << dt << msbuf
@@ -357,13 +384,13 @@ namespace tinylog {
         }
 
     private:
+        std::atomic<bool> initialized_{ false };
         std::mutex m_;
         std::condition_variable cv_;
         std::deque<Msg> q_;
         std::jthread worker_;
         std::optional<std::ofstream> file_;
         Options opts_;
-        std::atomic<bool> initialized_{ false };
         std::atomic<bool> running_{ false };
         std::atomic<int>  console_level_{ static_cast<int>(Level::Info) };
         std::atomic<int>  file_level_{ static_cast<int>(Level::Trace) };

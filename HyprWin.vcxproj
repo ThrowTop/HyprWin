@@ -179,54 +179,6 @@
     <ClCompile Include="helpers\dwm.cpp" />
     <ClCompile Include="helpers\mon.cpp" />
     <ClCompile Include="settings\config.cpp" />
-    <ClCompile Include="lib\tray\src\button.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="lib\tray\src\entry.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="lib\tray\src\icon.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="lib\tray\src\image.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="lib\tray\src\imagebutton.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="lib\tray\src\label.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="lib\tray\src\separator.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="lib\tray\src\submenu.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="lib\tray\src\syncedtoggle.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="lib\tray\src\toggle.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="lib\tray\src\tray.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="lib\tray\src\traybase.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="mouseManager.cpp" />
     <ClCompile Include="overlay.cpp" />
@@ -247,19 +199,6 @@
     <ClInclude Include="settings\action_vec.hpp" />
     <ClInclude Include="settings\config.hpp" />
     <ClInclude Include="settings\dispatcher.hpp" />
-    <ClInclude Include="lib\tray\include\button.hpp" />
-    <ClInclude Include="lib\tray\include\entry.hpp" />
-    <ClInclude Include="lib\tray\include\icon.hpp" />
-    <ClInclude Include="lib\tray\include\image.hpp" />
-    <ClInclude Include="lib\tray\include\imagebutton.hpp" />
-    <ClInclude Include="lib\tray\include\label.hpp" />
-    <ClInclude Include="lib\tray\include\separator.hpp" />
-    <ClInclude Include="lib\tray\include\submenu.hpp" />
-    <ClInclude Include="lib\tray\include\syncedtoggle.hpp" />
-    <ClInclude Include="lib\tray\include\toggle.hpp" />
-    <ClInclude Include="lib\tray\include\tray.hpp" />
-    <ClInclude Include="lib\tray\include\traybase.hpp" />
-    <ClInclude Include="lib\tray\include\win_tray.hpp" />
     <ClInclude Include="lockfreequeue.hpp" />
     <ClInclude Include="mouseManager.hpp" />
     <ClInclude Include="overlay.hpp" />
@@ -268,6 +207,9 @@
     <ClInclude Include="pch.hpp" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="tinylog.hpp" />
+    <ClInclude Include="tray\assets.hpp" />
+    <ClInclude Include="tray\components.hpp" />
+    <ClInclude Include="tray\tray.hpp" />
     <ClInclude Include="utils.hpp" />
   </ItemGroup>
   <ItemGroup>

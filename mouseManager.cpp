@@ -8,6 +8,26 @@
 
 #include "tinylog.hpp"
 
+
+
+#ifndef SLOW_HOOK_MS
+#define SLOW_HOOK_MS 2.0
+#endif
+
+struct HookBench {
+    LARGE_INTEGER t0;
+    static const LARGE_INTEGER& freq() {
+        static LARGE_INTEGER f = [] { LARGE_INTEGER x{}; QueryPerformanceFrequency(&x); return x; }();
+        return f;
+    }
+    explicit HookBench() { QueryPerformanceCounter(&t0); }
+    ~HookBench() {
+        LARGE_INTEGER t1{}; QueryPerformanceCounter(&t1);
+        const double ms = (t1.QuadPart - t0.QuadPart) * 1000.0 / (double)freq().QuadPart;
+        if (ms >= SLOW_HOOK_MS) LOG_C("MouseProc slow: {:.03f} ms", ms);
+    }
+};
+
 namespace mm {
     MouseManager::MouseManager(HINSTANCE hi, Config* cfg) : hInstance(hi), config(cfg) {
         instance = this;
@@ -68,8 +88,11 @@ namespace mm {
         if (code < 0 || !instance || !lParam)
             return CallNextHookEx(nullptr, code, wParam, lParam);
 
-        MSLLHOOKSTRUCT* ms = reinterpret_cast<MSLLHOOKSTRUCT*>(lParam);
+#ifdef HOOK_DEBUG
+        HookBench hb;
+#endif
 
+        MSLLHOOKSTRUCT* ms = reinterpret_cast<MSLLHOOKSTRUCT*>(lParam);
         switch (wParam) {
         case WM_MOUSEMOVE:
         instance->latestMousePos.store(ms->pt, std::memory_order_relaxed);
@@ -89,7 +112,6 @@ namespace mm {
         case WM_MBUTTONUP:
         return CallNextHookEx(nullptr, code, wParam, lParam); // allow release
 
-        // keep swallowing these if that is what you want (not queued)
         case WM_MBUTTONDOWN:
         case WM_MOUSEWHEEL:
         case WM_MOUSEHWHEEL:

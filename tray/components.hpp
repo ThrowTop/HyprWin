@@ -61,7 +61,9 @@ class TrayEntry {
     }
 };
 
-// -------------------- BaseTray (container) --------------------
+template <typename T>
+concept tray_entry = std::is_base_of_v<TrayEntry, T>; // or std::derived_from in C++20
+
 // -------------------- BaseTray (container) --------------------
 class BaseTray {
   protected:
@@ -73,23 +75,24 @@ class BaseTray {
     BaseTray(std::wstring identifierIn, Icon iconIn) : icon(std::move(iconIn)), identifier(std::move(identifierIn)) {}
     virtual ~BaseTray() = default;
 
-    template <typename... T>
-    void addEntries(const T&... es) {
+    // Add a pack of existing entries (const lvalues)
+    template <tray_entry... Ts>
+    void addEntries(const Ts&... es) {
         (addEntry(es), ...);
     }
 
-    // const& path: one copy of T
-    template <typename T, std::enable_if_t<std::is_base_of_v<TrayEntry, T>, int> = 0>
+    // Add a single entry by const reference (one copy of T)
+    template <tray_entry T>
     std::shared_ptr<T> addEntry(const T& entry) {
         auto sp = std::make_shared<T>(entry); // one copy of T
         sp->setParent(this);
         entries.emplace_back(sp); // upcast to shared_ptr<TrayEntry>
         update();
-        return sp; // return typed shared_ptr<T>
+        return sp; // typed shared_ptr<T>
     }
 
-    // rvalue path: move-construct T, no copy
-    template <typename T, std::enable_if_t<std::is_base_of_v<TrayEntry, T>, int> = 0>
+    // Add a single entry by rvalue (move-construct T, avoid copy)
+    template <tray_entry T>
     std::shared_ptr<T> addEntry(T&& entry) {
         auto sp = std::make_shared<T>(std::move(entry));
         sp->setParent(this);
@@ -98,8 +101,8 @@ class BaseTray {
         return sp;
     }
 
-    // perfect-forwarding emplacement
-    template <typename T, typename... Args, std::enable_if_t<std::is_base_of_v<TrayEntry, T>, int> = 0>
+    // Construct T in-place (perfect forwarding)
+    template <tray_entry T, typename... Args>
     std::shared_ptr<T> emplaceEntry(Args&&... args) {
         auto sp = std::make_shared<T>(std::forward<Args>(args)...);
         sp->setParent(this);
@@ -113,7 +116,7 @@ class BaseTray {
     virtual void update() = 0;
 
     const std::vector<std::shared_ptr<TrayEntry>>& getEntries() const {
-        return entries; // avoid copying the vector
+        return entries; // no copy
     }
 };
 
@@ -275,29 +278,25 @@ class Submenu : public TrayEntry {
     explicit Submenu(std::wstring textIn) : TrayEntry(std::move(textIn)) {}
     ~Submenu() override = default;
 
-    template <typename... T>
-    Submenu(std::wstring textIn, const T&... es) : Submenu(std::move(textIn)) {
-        addEntries(es...);
-    }
-
-    template <typename... T>
-    void addEntries(const T&... es) {
+    // Add a pack of existing entries (const lvalues)
+    template <tray_entry... Ts>
+    void addEntries(const Ts&... es) {
         (addEntry(es), ...);
     }
 
-    // const& path: one copy of T
-    template <typename T, std::enable_if_t<std::is_base_of_v<TrayEntry, T>, int> = 0>
+    // Add a single entry by const reference (one copy of T)
+    template <tray_entry T>
     std::shared_ptr<T> addEntry(const T& entry) {
         auto sp = std::make_shared<T>(entry);
-        sp->setParent(parent); // parent is the owning tray
+        sp->setParent(parent); // owning tray is the parent
         children.emplace_back(sp);
         if (parent)
             parent->update();
         return sp;
     }
 
-    // rvalue path: move-construct T
-    template <typename T, std::enable_if_t<std::is_base_of_v<TrayEntry, T>, int> = 0>
+    // Add a single entry by rvalue (move-construct T)
+    template <tray_entry T>
     std::shared_ptr<T> addEntry(T&& entry) {
         auto sp = std::make_shared<T>(std::move(entry));
         sp->setParent(parent);
@@ -307,8 +306,8 @@ class Submenu : public TrayEntry {
         return sp;
     }
 
-    // perfect-forwarding emplacement
-    template <typename T, typename... Args, std::enable_if_t<std::is_base_of_v<TrayEntry, T>, int> = 0>
+    // Construct T in-place (perfect forwarding)
+    template <tray_entry T, typename... Args>
     std::shared_ptr<T> emplaceEntry(Args&&... args) {
         auto sp = std::make_shared<T>(std::forward<Args>(args)...);
         sp->setParent(parent);
@@ -324,7 +323,7 @@ class Submenu : public TrayEntry {
     }
 
     const std::vector<std::shared_ptr<TrayEntry>>& getEntries() const {
-        return children; // avoid copying the vector
+        return children; // no copy
     }
 };
 } // namespace Tray

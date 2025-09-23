@@ -3,6 +3,7 @@
 #include <Windows.h>
 #include <d2d1.h>
 #include <functional>
+#include <concepts>
 
 template <typename T>
 concept com_obj = std::is_base_of<IUnknown, T>::value;

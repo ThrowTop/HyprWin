@@ -3,16 +3,18 @@
 // Concrete tray implementation using Win32 shell notify icon.
 // Best-effort dark mode via undocumented uxtheme exports and DWM attribute.
 // Stock menus only (no owner-draw).
-
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <string>
 #include <shellapi.h>
 #include <strsafe.h>
-#include <windowsx.h>
 #include <dwmapi.h>
 #include <map>
 #include <vector>
 #include <memory>
 #include <stdexcept>
+#include <functional>
+#include <utility>
 
 #pragma comment(lib, "dwmapi.lib")
 
@@ -70,9 +72,9 @@ class Tray : public BaseTray {
 
     inline static std::map<HWND, std::reference_wrapper<Tray>> trayList;
 
-    std::function<void()> leftClickCb;
-    std::function<void()> doubleClickCb;
-    std::function<void()> rightClickCb;
+    std::function<bool()> leftClickCb;
+    std::function<bool()> doubleClickCb;
+    std::function<bool()> rightClickCb;
 
     bool isExiting = false;
 
@@ -147,22 +149,34 @@ class Tray : public BaseTray {
         Shell_NotifyIconW(NIM_MODIFY, &nid);
     }
 
-    void showNotification(const std::wstring& title, const std::wstring& body, DWORD infoFlags = NIIF_INFO, UINT timeoutMs = 10000, HICON customIcon = nullptr) {
-        NOTIFYICONDATAW nid = notifyData; // copy your registered icon’s data
-        nid.uFlags = NIF_INFO;            // we’re modifying the info fields
+    // In class Tray (inside tray.hpp)
+
+    void showNotification(const std::wstring& title,
+      const std::wstring& body,
+      DWORD infoFlags = NIIF_INFO,
+      UINT timeoutMs = 10000,
+      const Icon& ic = Icon()) // default: empty => use tray icon
+    {
+        NOTIFYICONDATAW nid = notifyData; // copy of registered data
+        nid.uFlags = NIF_INFO;
         StringCchCopyW(nid.szInfoTitle, ARRAYSIZE(nid.szInfoTitle), title.c_str());
         StringCchCopyW(nid.szInfo, ARRAYSIZE(nid.szInfo), body.c_str());
 
-        // timeout: older OS honored this; on Win10+ it’s largely ignored
+        // Win10/11 mostly ignore this, but keep it for older builds.
         nid.uTimeout = timeoutMs;
 
         nid.dwInfoFlags = infoFlags;
-        if (customIcon) {
-            nid.dwInfoFlags &= ~(NIIF_INFO | NIIF_WARNING | NIIF_ERROR); // ensure no built-in glyph
-            nid.dwInfoFlags |= NIIF_USER;
-            nid.hBalloonIcon = customIcon; // Vista+ field; safe with current SDK
-        }
 
+        // Use provided icon if non-empty; otherwise reuse our tray icon.
+        HICON hBalloon = ic.get() ? ic.get() : notifyData.hIcon;
+
+        // Only mark NIIF_USER when we are explicitly specifying a glyph.
+        // Using NIIF_USER with our tray icon is also fine; it avoids the info/warn/error glyphs.
+        nid.dwInfoFlags &= ~(NIIF_INFO | NIIF_WARNING | NIIF_ERROR); // remove built-ins
+        nid.dwInfoFlags |= NIIF_USER;
+        nid.hBalloonIcon = hBalloon;
+
+        // Fire it
         Shell_NotifyIconW(NIM_MODIFY, &nid);
     }
 
@@ -178,13 +192,13 @@ class Tray : public BaseTray {
 
     // Install handlers. If unset, defaults are: right click opens menu;
     // left click opens menu; double click activates default item.
-    void onLeftClick(std::function<void()> cb) {
+    void onLeftClick(std::function<bool()> cb) {
         leftClickCb = std::move(cb);
     }
-    void onDoubleClick(std::function<void()> cb) {
+    void onDoubleClick(std::function<bool()> cb) {
         doubleClickCb = std::move(cb);
     }
-    void onRightClick(std::function<void()> cb) {
+    void onRightClick(std::function<bool()> cb) {
         rightClickCb = std::move(cb);
     }
 
@@ -278,8 +292,7 @@ class Tray : public BaseTray {
 
                 switch (lParam) {
                     case WM_LBUTTONUP: {
-                        if (tray.leftClickCb) {
-                            tray.leftClickCb();
+                        if (tray.leftClickCb && tray.leftClickCb()) {
                             return 0;
                         }
                         // default: open menu at cursor
@@ -296,10 +309,9 @@ class Tray : public BaseTray {
                     }
 
                     case WM_LBUTTONDBLCLK: {
-                        if (tray.doubleClickCb) {
-                            tray.doubleClickCb();
+                        if (tray.doubleClickCb && tray.doubleClickCb())
                             return 0;
-                        }
+
                         if (!tray.menu)
                             tray.menu = construct(tray.entries, &tray, true);
                         UINT defId = GetMenuDefaultItem(tray.menu, FALSE, 0);
@@ -310,10 +322,9 @@ class Tray : public BaseTray {
 
                     case WM_RBUTTONUP:
                     case WM_CONTEXTMENU: { // shell callback: no coords -> always use cursor pos
-                        if (tray.rightClickCb) {
-                            tray.rightClickCb();
+                        if (tray.rightClickCb && tray.rightClickCb())
                             return 0;
-                        }
+
                         POINT p;
                         GetCursorPos(&p);
                         SetForegroundWindow(hwnd);
@@ -328,32 +339,6 @@ class Tray : public BaseTray {
                 }
                 break;
             }
-
-            case WM_CONTEXTMENU: {
-                // This is the normal window WM_CONTEXTMENU (not the shell callback).
-                // lParam packs screen coords unless keyboard-invoked.
-                POINT p;
-                p.x = GET_X_LPARAM(lParam);
-                p.y = GET_Y_LPARAM(lParam);
-                if (p.x == -1 && p.y == -1)
-                    GetCursorPos(&p);
-
-                auto& tray = it->second.get();
-                if (tray.rightClickCb) {
-                    tray.rightClickCb();
-                    return 0;
-                }
-
-                SetForegroundWindow(hwnd);
-                if (!tray.menu)
-                    tray.menu = construct(tray.entries, &tray, true);
-                UINT cmd = TrackPopupMenuEx(tray.menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON, p.x, p.y, hwnd, nullptr);
-                if (cmd)
-                    SendMessageW(hwnd, WM_COMMAND, cmd, 0);
-                PostMessageW(hwnd, WM_NULL, 0, 0);
-                return 0;
-            }
-
             case WM_COMMAND: {
                 MENUITEMINFOW mi{};
                 mi.cbSize = sizeof(mi);

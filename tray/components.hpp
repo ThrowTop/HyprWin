@@ -7,8 +7,9 @@
 #include <memory>
 #include <type_traits>
 #include <vector>
-#include "assets.hpp"
+#include <utility>
 
+#include "assets.hpp"
 namespace Tray {
 class BaseTray; // forward decl
 
@@ -25,7 +26,7 @@ class TrayEntry {
 
     Image glyphBitmapOwned;   // if user set a bitmap directly
     Icon glyphIcon;           // if user set an icon…
-    mutable Image glyphCache; // …we lazily convert to a bitmap for menus
+    mutable Image glyphCache; // ...we lazily convert to a bitmap for menus
     mutable int cacheCx = 0;
     mutable int cacheCy = 0;
 
@@ -61,6 +62,7 @@ class TrayEntry {
 };
 
 // -------------------- BaseTray (container) --------------------
+// -------------------- BaseTray (container) --------------------
 class BaseTray {
   protected:
     Icon icon;
@@ -68,7 +70,7 @@ class BaseTray {
     std::vector<std::shared_ptr<TrayEntry>> entries;
 
   public:
-    BaseTray(std::wstring identifier, Icon icon) : icon(std::move(icon)), identifier(std::move(identifier)) {}
+    BaseTray(std::wstring identifierIn, Icon iconIn) : icon(std::move(iconIn)), identifier(std::move(identifierIn)) {}
     virtual ~BaseTray() = default;
 
     template <typename... T>
@@ -76,21 +78,42 @@ class BaseTray {
         (addEntry(es), ...);
     }
 
-    template <typename T, std::enable_if_t<std::is_base_of<TrayEntry, T>::value>* = nullptr>
-    auto addEntry(const T& entry) {
-        entries.emplace_back(std::make_shared<T>(entry));
-        auto sp = entries.back();
+    // const& path: one copy of T
+    template <typename T, std::enable_if_t<std::is_base_of_v<TrayEntry, T>, int> = 0>
+    std::shared_ptr<T> addEntry(const T& entry) {
+        auto sp = std::make_shared<T>(entry); // one copy of T
         sp->setParent(this);
+        entries.emplace_back(sp); // upcast to shared_ptr<TrayEntry>
         update();
-        return std::dynamic_pointer_cast<std::decay_t<T>>(sp);
+        return sp; // return typed shared_ptr<T>
+    }
+
+    // rvalue path: move-construct T, no copy
+    template <typename T, std::enable_if_t<std::is_base_of_v<TrayEntry, T>, int> = 0>
+    std::shared_ptr<T> addEntry(T&& entry) {
+        auto sp = std::make_shared<T>(std::move(entry));
+        sp->setParent(this);
+        entries.emplace_back(sp);
+        update();
+        return sp;
+    }
+
+    // perfect-forwarding emplacement
+    template <typename T, typename... Args, std::enable_if_t<std::is_base_of_v<TrayEntry, T>, int> = 0>
+    std::shared_ptr<T> emplaceEntry(Args&&... args) {
+        auto sp = std::make_shared<T>(std::forward<Args>(args)...);
+        sp->setParent(this);
+        entries.emplace_back(sp);
+        update();
+        return sp;
     }
 
     virtual void run() = 0;
     virtual void exit() = 0;
     virtual void update() = 0;
 
-    std::vector<std::shared_ptr<TrayEntry>> getEntries() {
-        return entries;
+    const std::vector<std::shared_ptr<TrayEntry>>& getEntries() const {
+        return entries; // avoid copying the vector
     }
 };
 
@@ -244,16 +267,16 @@ class Toggle : public TrayEntry {
         onToggle = std::move(cb);
     }
 };
-
+// -------------------- Submenu --------------------
 class Submenu : public TrayEntry {
     std::vector<std::shared_ptr<TrayEntry>> children;
 
   public:
-    explicit Submenu(std::wstring text) : TrayEntry(std::move(text)) {}
+    explicit Submenu(std::wstring textIn) : TrayEntry(std::move(textIn)) {}
     ~Submenu() override = default;
 
     template <typename... T>
-    Submenu(std::wstring text, const T&... es) : Submenu(text) {
+    Submenu(std::wstring textIn, const T&... es) : Submenu(std::move(textIn)) {
         addEntries(es...);
     }
 
@@ -262,22 +285,46 @@ class Submenu : public TrayEntry {
         (addEntry(es), ...);
     }
 
-    template <typename T, std::enable_if_t<std::is_base_of_v<TrayEntry, T>>* = nullptr>
-    auto addEntry(const T& entry) {
-        children.emplace_back(std::make_shared<T>(entry));
-        auto sp = children.back();
+    // const& path: one copy of T
+    template <typename T, std::enable_if_t<std::is_base_of_v<TrayEntry, T>, int> = 0>
+    std::shared_ptr<T> addEntry(const T& entry) {
+        auto sp = std::make_shared<T>(entry);
         sp->setParent(parent); // parent is the owning tray
+        children.emplace_back(sp);
         if (parent)
             parent->update();
-        return std::dynamic_pointer_cast<T>(sp);
+        return sp;
+    }
+
+    // rvalue path: move-construct T
+    template <typename T, std::enable_if_t<std::is_base_of_v<TrayEntry, T>, int> = 0>
+    std::shared_ptr<T> addEntry(T&& entry) {
+        auto sp = std::make_shared<T>(std::move(entry));
+        sp->setParent(parent);
+        children.emplace_back(sp);
+        if (parent)
+            parent->update();
+        return sp;
+    }
+
+    // perfect-forwarding emplacement
+    template <typename T, typename... Args, std::enable_if_t<std::is_base_of_v<TrayEntry, T>, int> = 0>
+    std::shared_ptr<T> emplaceEntry(Args&&... args) {
+        auto sp = std::make_shared<T>(std::forward<Args>(args)...);
+        sp->setParent(parent);
+        children.emplace_back(sp);
+        if (parent)
+            parent->update();
+        return sp;
     }
 
     void update() {
         if (parent)
             parent->update();
     }
-    std::vector<std::shared_ptr<TrayEntry>> getEntries() {
-        return children;
+
+    const std::vector<std::shared_ptr<TrayEntry>>& getEntries() const {
+        return children; // avoid copying the vector
     }
 };
 } // namespace Tray

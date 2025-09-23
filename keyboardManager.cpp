@@ -1,8 +1,11 @@
 #include "pch.hpp"
 
+#include <stop_token>
+#include <thread>
+#include <utility>
+
 #include "keyboardManager.hpp"
 #include "utils/utils.hpp"
-#include "overlay.hpp"
 
 #include "settings/config.hpp"
 #include "settings/action_registry.hpp"

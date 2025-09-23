@@ -1,5 +1,6 @@
 #include "pch.hpp"
 #include "overlay.hpp"
+#include <Uxtheme.h>
 
 OverlayWindow::OverlayWindow() {}
 

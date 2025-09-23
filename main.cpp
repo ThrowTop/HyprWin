@@ -1,9 +1,10 @@
 #include "pch.hpp"
 
-#include "utils/utils.hpp"
-#include "lockfreequeue.hpp"
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <wchar.h>
 
-//#include "lib/tray/include/tray.hpp"
+#include "utils/utils.hpp"
 
 #include "tray/tray.hpp"
 
@@ -19,6 +20,7 @@
 #include <atomic>
 #include <chrono>
 #include <thread>
+#include <mutex>
 
 #include <ShlObj.h> // Icon Definitions
 #pragma comment(lib, "shell32.lib")
@@ -49,6 +51,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         return ALREADY_RUNNING;
     }
 
+    SetCurrentProcessExplicitAppUserModelID(L"hyprwin.throwtop.dev");
+
     tinylog::init({.console = true,
       .file_path = "hyprwin.log",
       .console_level = tinylog::Level::Debug,
@@ -70,28 +74,32 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
     // Tray thread (its own message loop)
     std::jthread trayThread([&state, &superVk] {
-        using namespace std::chrono_literals;
         SET_THREAD_NAME("tray");
 
-        Tray::Tray sys_tray(L"HyprWin.Tray", IDI_HWICON);
+        Tray::Icon HW_ICON(IDI_HWICON); // resource; your RAII owns it
+        Tray::Tray sys_tray(L"HyprWin", HW_ICON);
+
         sys_tray.setTooltip(L"HyprWin");
         sys_tray.DarkMode(Tray::dark::AppModeForceDark);
 
-        sys_tray
-          .addEntry(Tray::Button(L"Reload Config",
-            [&] {
-                Config newCfg;
-                if (!newCfg.LoadConfig()) {
-                    MessageBoxW(nullptr, L"Config Fuarked", L"Error", MB_OK | MB_ICONERROR);
-                    return;
-                }
-                {
-                    std::scoped_lock lock(state.mtx);
-                    state.cfg = std::move(newCfg);
-                }
-                superVk.store(state.cfg.m_settings.SUPER, std::memory_order_relaxed);
-            }))
-          ->setGlyphIcon(Tray::Icon(IDI_HWICON));
+        sys_tray.onLeftClick([&] { return true; });
+        sys_tray.onDoubleClick([&] { return false; });
+
+        auto reloadBtn = sys_tray.addEntry(Tray::Button(L"Reload Config", [&] {
+            Config newCfg;
+            if (!newCfg.LoadConfig()) {
+                MessageBoxW(nullptr, L"Config Fuarked", L"Error", MB_OK | MB_ICONERROR);
+                return;
+            }
+            {
+                std::scoped_lock lock(state.mtx);
+                state.cfg = std::move(newCfg);
+            }
+            superVk.store(state.cfg.m_settings.SUPER, std::memory_order_relaxed);
+        }));
+
+        reloadBtn->setGlyphIcon(Tray::Icon(IDI_HWICON));
+        reloadBtn->setDefault(true);
 
         sys_tray
           .addEntry(Tray::Button(L"Open Config Folder",
@@ -166,5 +174,5 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
     if (mutex)
         CloseHandle(mutex);
-    return EXIT_SUCCESS;
+    return 0;
 }

@@ -1,8 +1,7 @@
 #pragma once
 
 #include <Windows.h>
-#include <format>
-#include <iostream>
+
 #include "tinylog.hpp"
 #include "settings/parser.hpp"
 
@@ -84,7 +83,7 @@ static inline bool SafeSendMessageTimeoutW(HWND hwnd, UINT msg, WPARAM wp, LPARA
     if (!IsWindow(hwnd))
         return false;
     ULONG_PTR r = 0;
-    BOOL ok = SendMessageTimeoutW(hwnd, msg, wp, lp, SMTO_ABORTIFHUNG | SMTO_NORMAL, timeout_ms, &r);
+    LRESULT ok = SendMessageTimeoutW(hwnd, msg, wp, lp, SMTO_ABORTIFHUNG | SMTO_NORMAL, timeout_ms, &r);
     if (ok && out_opt)
         *out_opt = (LRESULT)r;
     return !!ok;

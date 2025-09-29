@@ -1,7 +1,7 @@
 // helpers/dwm.hpp
 #pragma once
 #include <Windows.h>
-
+#include "../tinylog.hpp"
 namespace utils::dwm {
 inline bool GetWindowRectSafe(HWND hwnd, RECT& win) {
     return IsWindow(hwnd) && GetWindowRect(hwnd, &win);
@@ -10,6 +10,7 @@ inline bool GetWindowRectSafe(HWND hwnd, RECT& win) {
 inline void SetFocusToWindow(HWND hwnd) {
     if (!IsWindow(hwnd))
         return;
+
     AllowSetForegroundWindow(ASFW_ANY);
     SetForegroundWindow(hwnd);
     BringWindowToTop(hwnd);

@@ -368,6 +368,7 @@ void MouseManager::ProcessMouse(WPARAM wp) {
                     return;
                 }
 
+                LOG_D("Target window rect: {}", parse::rectToStr(windowRect));
                 utils::dwm::SetFocusToWindow(targetWindow);
 
                 if (wp == WM_RBUTTONDOWN) {

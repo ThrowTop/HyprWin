@@ -154,12 +154,12 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
             km.InstallHook();
             mm.InstallHook();
 
-            // Block until SUPER release (or exit)
-            std::unique_lock lk(state.mtx);
-            state.cv.wait(lk, [&] { return state.superReleased || !state.running; });
-            state.superReleased = false;
-            lk.unlock();
-
+            //// Block until SUPER release (or exit)
+            //std::unique_lock lk(state.mtx);
+            //state.cv.wait(lk, [&] { return state.superReleased || !state.running; });
+            //state.superReleased = false;
+            //lk.unlock();
+        } else if (!superDown && lastDown) {
             km.UninstallHook();
             mm.UninstallHook();
         }

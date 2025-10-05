@@ -7,7 +7,7 @@ It supports **modifiers**, **color themes**, and various window control dispatch
 > ⚠ **Warning:** This project uses a **non-standard INI format** for syntax highlighting purposes.  
 > All binds require the **SUPER** key to be held.
 
-## Recommend remapping the windows key to some unused key using your keyboard software. I use `PAUSE` as i have a 75% keyboard. 
+## SUPER key gets captured meaning whatever key you set as SUPER will not be passed to other applications.
 
 Discord: https://discord.gg/ntR53BTC
 
@@ -53,7 +53,7 @@ SHIFT+Q = ForceKillWindow
 SHIFT+F6 = SetResolution 1024x768@360
 
 [settings]
-SUPER = PAUSE
+SUPER = LWIN
 COLOR = 00FF00, FF0000, 45.0, 1, 10.0
 ```
 ### Format:

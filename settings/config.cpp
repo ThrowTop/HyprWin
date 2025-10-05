@@ -60,7 +60,7 @@ static constexpr const char* default_config = R"(
 #	COLOR = <HEXCOLOR> [, HEXCOLOR Gradient, GradientAngle:float(ignored if rotating), isRotating:bool, rotationSpeed deg/s:float]
 
 [settings]
-SUPER = PAUSE # REQUIRED
+SUPER = LWIN # REQUIRED
 COLOR = 00a2ff, ff00f7, 45, true, 120
 BORDER = 3
 RESIZE_CORNER = BOTTOMRIGHT # CLOSEST TOPLEFT TOPRIGHT BOTTOMLEFT BOTTOMRIGH
@@ -90,8 +90,6 @@ LSHIFT+LEFT = MoveWindowToLeftMon
 LSHIFT+RIGHT = MoveWindowToRightMon
 LSHIFT+LEFT = FullScreenPadded
 LSHIFT+RIGHT = FullScreenPadded
-
-B = Run, C:\Users\Throw\AppData\Local\BraveSoftware\Brave-Browser\Application\brave.exe
 
 F7 = CycleAudioDevice
 F1 = MsgBox, Hello World,Wow

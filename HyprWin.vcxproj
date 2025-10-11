@@ -77,6 +77,7 @@
     <OutDir>$(SolutionDir)Output\</OutDir>
     <IntDir>$(SolutionDir)Output\Temp\</IntDir>
     <TargetName>$(ProjectName)$(Configuration)</TargetName>
+    <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <OutDir>$(SolutionDir)Output\$(Configuration)\</OutDir>
@@ -192,7 +193,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="audioDeviceManager.hpp" />
-    <ClInclude Include="superhook.hpp" />
     <ClInclude Include="utils\dwm.hpp" />
     <ClInclude Include="utils\mon.hpp" />
     <ClInclude Include="settings\action_types.hpp" />

@@ -4,6 +4,8 @@
 
 #include "tinylog.hpp"
 #include "settings/parser.hpp"
+#include <avrt.h>
+#pragma comment(lib, "avrt.lib")
 
 // Override
 //#define DBG // Starts Console for debug printing, Enables LOG Functions even in release mode, enabled by default in Debug
@@ -110,4 +112,33 @@ void SetWindowRect(HWND hwnd, const RECT& r); // SetWindowPos wrapper (window sp
 
 // High level helper: set a bordered window filling the current monitor's work area with padding
 void SetBorderedWindow(HWND hwnd, int borderPx);
+
+inline static void DisableProcessThrottling() noexcept {
+    PROCESS_POWER_THROTTLING_STATE ppts{};
+    ppts.Version = PROCESS_POWER_THROTTLING_CURRENT_VERSION;
+    ppts.ControlMask = PROCESS_POWER_THROTTLING_EXECUTION_SPEED;
+    ppts.StateMask = 0;
+    SetProcessInformation(GetCurrentProcess(), ProcessPowerThrottling, &ppts, sizeof(ppts));
+}
+
+inline static void BoostThread() noexcept {
+    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
+
+    DWORD idx = 0;
+    AvSetMmThreadCharacteristicsW(L"Games", &idx);
+
+    THREAD_POWER_THROTTLING_STATE tpts{};
+    tpts.Version = THREAD_POWER_THROTTLING_CURRENT_VERSION;
+    tpts.ControlMask = THREAD_POWER_THROTTLING_EXECUTION_SPEED;
+    tpts.StateMask = 0;
+    SetThreadInformation(GetCurrentThread(), ThreadPowerThrottling, &tpts, sizeof(tpts));
+}
+
+// Pin thread to a CPU core (optional)
+inline static void PinToCpu(DWORD cpu) noexcept {
+    GROUP_AFFINITY ga{};
+    ga.Group = static_cast<WORD>(cpu / 64);
+    ga.Mask = 1ull << (cpu % 64);
+    SetThreadGroupAffinity(GetCurrentThread(), &ga, nullptr);
+}
 } // namespace utils

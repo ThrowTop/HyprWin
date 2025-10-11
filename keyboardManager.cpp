@@ -11,10 +11,11 @@
 #include "settings/action_registry.hpp"
 
 // Encode key state into VK code
+static bool g_superDown = false;
 constexpr UINT KEY_DOWN_FLAG = 0x8000u;
 
 static __forceinline UINT EncodeKey(UINT vkCode, WPARAM wParam) {
-    return (wParam == WM_KEYDOWN) ? (vkCode | KEY_DOWN_FLAG) : vkCode;
+    return (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) ? (vkCode | KEY_DOWN_FLAG) : vkCode;
 }
 
 static inline UINT DecodeKey(UINT encodedKey) {
@@ -30,12 +31,16 @@ KeyboardManager::KeyboardManager(Config* cfg) : config(cfg) {
     instance = this;
 
     inputThread = std::jthread([this](std::stop_token st) {
+        utils::BoostThread();
         (void)CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
         InputLoop(st);
         CoUninitialize();
     });
 
-    hookThread = std::jthread([this](std::stop_token st) { HookLoop(st); });
+    hookThread = std::jthread([this](std::stop_token st) {
+        utils::BoostThread();
+        HookLoop(st);
+    });
 }
 
 KeyboardManager::~KeyboardManager() {
@@ -53,26 +58,19 @@ KeyboardManager::~KeyboardManager() {
         hookThread.join();
 }
 
-void KeyboardManager::InstallHook() {
-    {
-        std::scoped_lock lock(hookCvMutex);
-        installHookRequested = true;
+void KeyboardManager::SeedModifierStates() noexcept {
+    static constexpr UINT modifiers[] = {VK_LSHIFT, VK_RSHIFT, VK_LCONTROL, VK_RCONTROL, VK_LMENU, VK_RMENU};
+    for (UINT vk : modifiers) {
+        if (GetAsyncKeyState(vk) & 0x8000)
+            SetKey(vk);
+        else
+            ClearKey(vk);
     }
-    hookCv.notify_one();
 }
 
 void KeyboardManager::UninstallHook() {
-    {
-        std::scoped_lock lock(hookCvMutex);
-        uninstallHookRequested = true;
-    }
-    hookCv.notify_one();
-
-    // Unblock GetMessage so thread can rejoin
     PostThreadMessage(hookThreadId, WM_NULL, 0, 0);
-    ClearAllKeys();
     cv.notify_one();
-    // Notify overlay to refresh status
     dispatcher::IPCMessage({0xBEEF00FF, L"PCSTATUS_REFRESH_MSG", L"D2DOverlayStatusWnd"});
 }
 
@@ -80,30 +78,43 @@ void KeyboardManager::SetSuperReleasedCallback(std::function<void()> cb) {
     superReleasedCallback = std::move(cb);
 }
 
+void KeyboardManager::SetSuperPressedCallback(std::function<void()> cb) {
+    superPressedCallback = std::move(cb);
+}
+
 LRESULT CALLBACK KeyboardManager::HookProc(int code, WPARAM wParam, LPARAM lParam) {
-    if (code >= 0 && instance && lParam) {
-        const KBDLLHOOKSTRUCT* kb = reinterpret_cast<KBDLLHOOKSTRUCT*>(lParam);
-        if (kb->flags & LLKHF_INJECTED)
-            return CallNextHookEx(nullptr, code, wParam, lParam);
+    if (code != HC_ACTION || !instance || !lParam)
+        return CallNextHookEx(nullptr, code, wParam, lParam);
 
-        bool dwn = (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN);
+    const KBDLLHOOKSTRUCT* kb = (const KBDLLHOOKSTRUCT*)lParam;
+    const UINT vk = kb->vkCode;
+    const UINT superVk = instance->config->m_settings.SUPER;
+    if ((kb->flags & (LLKHF_INJECTED | LLKHF_LOWER_IL_INJECTED)) != 0)
+        return CallNextHookEx(nullptr, code, wParam, lParam);
 
-        instance->keyQueue.push((wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) ? (kb->vkCode | KEY_DOWN_FLAG) : kb->vkCode);
-        instance->cv.notify_one();
-        if (dwn)
+    if (vk != superVk) {
+        if (g_superDown) {
+            instance->keyQueue.push(EncodeKey(vk, wParam));
+            instance->cv.notify_one();
             return 1;
+        }
+        return CallNextHookEx(nullptr, code, wParam, lParam);
     }
 
-    return CallNextHookEx(nullptr, code, wParam, lParam);
+    const bool down = (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN);
+    g_superDown = down;
+    instance->keyQueue.push(EncodeKey(vk, wParam));
+    instance->cv.notify_one();
+    return 1;
 }
 
 void KeyboardManager::InputLoop(std::stop_token st) {
     SET_THREAD_NAME("KB INPUT");
     while (!st.stop_requested()) {
         std::unique_lock lock(cvMutex);
-        cv.wait(lock, [&] { return st.stop_requested() || (hookHandle && !keyQueue.empty()); });
+        cv.wait(lock, [&] { return st.stop_requested() || !keyQueue.empty(); });
 
-        if (st.stop_requested() || !hookHandle)
+        if (st.stop_requested())
             continue;
 
         while (!keyQueue.empty()) {
@@ -121,11 +132,21 @@ void KeyboardManager::ProcessKey(UINT vk) {
     if (IsKeyDown(vk)) {
         if (IsKeySet(decodedVK))
             return;
+
+        if (decodedVK == config->m_settings.SUPER) {
+            SeedModifierStates();
+            if (superPressedCallback)
+                superPressedCallback();
+        }
+
         SetKey(decodedVK);
     } else {
         ClearKey(decodedVK);
-        if (decodedVK == config->m_settings.SUPER && superReleasedCallback)
+        if (decodedVK == config->m_settings.SUPER && superReleasedCallback) {
             superReleasedCallback();
+            ClearAllKeys();
+            dispatcher::IPCMessage({0xBEEF00FF, L"PCSTATUS_REFRESH_MSG", L"D2DOverlayStatusWnd"});
+        }
         return;
     }
 
@@ -141,6 +162,8 @@ void KeyboardManager::ProcessKey(UINT vk) {
         case VK_RMENU:
             return;
     }
+
+    LOG_E("Key event: {} {}", decodedVK, IsKeyDown(vk) ? "DOWN" : "UP");
 
     uint8_t modMask = 0;
     if (IsKeySet(VK_LSHIFT))
@@ -171,53 +194,16 @@ void KeyboardManager::HookLoop(std::stop_token st) {
     hookThreadId = GetCurrentThreadId();
     SET_THREAD_NAME("KB HOOK");
 
-    while (!st.stop_requested()) {
-        {
-            std::unique_lock lock(hookCvMutex);
-            hookCv.wait(lock, [&] { return st.stop_requested() || installHookRequested; });
-
-            if (st.stop_requested())
-                break;
-
-            if (installHookRequested && !hookHandle) {
-                HOOK_INSTALL();
-                hookHandle = SetWindowsHookExW(WH_KEYBOARD_LL, HookProc, nullptr, 0);
-                if (hookHandle) {
-                    installHookRequested = false;
-                    uninstallHookRequested = false;
-
-                    ClearAllKeys();
-
-                    constexpr UINT modifierKeys[] = {VK_LSHIFT, VK_RSHIFT, VK_LCONTROL, VK_RCONTROL, VK_LMENU, VK_RMENU};
-
-                    for (UINT vk : modifierKeys) {
-                        if (GetAsyncKeyState(vk) & 0x8000)
-                            SetKey(vk);
-                    }
-                }
-            }
-        }
-
-        if (!hookHandle)
-            continue;
+    hookHandle = SetWindowsHookExW(WH_KEYBOARD_LL, HookProc, nullptr, 0);
+    if (hookHandle) {
+        ClearAllKeys();
 
         MSG msg;
-        while (!st.stop_requested() && !uninstallHookRequested) {
-            BOOL result = GetMessage(&msg, nullptr, 0, 0);
-            if (result <= 0)
-                break;
+        while (!st.stop_requested() && GetMessageW(&msg, nullptr, 0, 0) > 0) {}
+        // no Translate/Dispatch needed for LL hook
 
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
-
-        if (hookHandle) {
-            HOOK_REMOVE();
-            UnhookWindowsHookEx(hookHandle);
-            hookHandle = nullptr;
-        }
-
-        uninstallHookRequested = false;
+        UnhookWindowsHookEx(hookHandle);
+        hookHandle = nullptr;
     }
 }
 } // namespace km

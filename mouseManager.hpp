@@ -35,10 +35,6 @@ class MouseManager {
     std::jthread hookThread;
     std::jthread overlayThread;
 
-    std::stop_token inputToken;
-    std::stop_token hookToken;
-    std::stop_token overlayToken;
-
     std::condition_variable overlayCv;
     std::mutex overlayCvMutex;
 
@@ -68,6 +64,9 @@ class MouseManager {
 
     bool installHookRequested = false;
     bool uninstallHookRequested = false;
+
+    bool allowLUpPassthrough = false;
+    bool allowRUpPassthrough = false;
 
     LockFreeQueue<WPARAM, 16> mouseQueue;
 

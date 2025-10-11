@@ -8,7 +8,6 @@
 #include <vector>
 #include <mmreg.h>
 
-#include "utils/utils.hpp"
 #include "tinylog.hpp"
 
 class AudioDeviceManager {

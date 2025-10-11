@@ -8,50 +8,23 @@
 
 #include "tinylog.hpp"
 
-#ifndef SLOW_HOOK_MS
-#define SLOW_HOOK_MS 2.0
-#endif
-
-struct HookBench {
-    LARGE_INTEGER t0;
-    static const LARGE_INTEGER& freq() {
-        static LARGE_INTEGER f = [] {
-            LARGE_INTEGER x{};
-            QueryPerformanceFrequency(&x);
-            return x;
-        }();
-        return f;
-    }
-    explicit HookBench() {
-        QueryPerformanceCounter(&t0);
-    }
-    ~HookBench() {
-        LARGE_INTEGER t1{};
-        QueryPerformanceCounter(&t1);
-        const double ms = (t1.QuadPart - t0.QuadPart) * 1000.0 / (double)freq().QuadPart;
-        if (ms >= SLOW_HOOK_MS)
-            LOG_C("MouseProc slow: {:.03f} ms", ms);
-    }
-};
-
 namespace mm {
 MouseManager::MouseManager(HINSTANCE hi, Config* cfg) : hInstance(hi), config(cfg) {
     instance = this;
 
     inputThread = std::jthread([this](std::stop_token st) {
-        inputToken = st;
+        utils::BoostThread();
+
         InputLoop(st);
     });
 
     hookThread = std::jthread([this](std::stop_token st) {
-        hookToken = st;
+        utils::BoostThread();
+
         HookLoop(st);
     });
 
-    overlayThread = std::jthread([this](std::stop_token st) {
-        overlayToken = st;
-        OverlayLoop(st);
-    });
+    overlayThread = std::jthread([this](std::stop_token st) { OverlayLoop(st); });
 }
 
 MouseManager::~MouseManager() {
@@ -85,7 +58,7 @@ void MouseManager::UninstallHook() {
     mouseQueue.push(WM_RBUTTONUP);
 
     hookCv.notify_one();
-    PostThreadMessage(hookThreadId, WM_QUIT, 0, 0);
+    PostThreadMessage(hookThreadId, WM_NULL, 0, 0);
 
     cv.notify_one();
 }
@@ -93,10 +66,6 @@ void MouseManager::UninstallHook() {
 LRESULT CALLBACK MouseManager::MouseProc(int code, WPARAM wParam, LPARAM lParam) {
     if (code < 0 || !instance || !lParam)
         return CallNextHookEx(nullptr, code, wParam, lParam);
-
-#ifdef HOOK_DEBUG
-    HookBench hb;
-#endif
 
     MSLLHOOKSTRUCT* ms = reinterpret_cast<MSLLHOOKSTRUCT*>(lParam);
     switch (wParam) {
@@ -109,14 +78,30 @@ LRESULT CALLBACK MouseManager::MouseProc(int code, WPARAM wParam, LPARAM lParam)
             instance->lastDownPt.store(ms->pt, std::memory_order_relaxed);
             instance->mouseQueue.push(wParam);
             instance->cv.notify_one();
-            return 1; // swallow press
+            return 1;
 
-        case WM_LBUTTONUP:
-        case WM_RBUTTONUP:
+        case WM_LBUTTONUP: {
             instance->mouseQueue.push(wParam);
             instance->cv.notify_one();
+            if (instance->allowLUpPassthrough) {
+                instance->allowLUpPassthrough = false;
+                return CallNextHookEx(nullptr, code, wParam, lParam);
+            }
+            return 1;
+        }
+
+        case WM_RBUTTONUP: {
+            instance->mouseQueue.push(wParam);
+            instance->cv.notify_one();
+            if (instance->allowRUpPassthrough) {
+                instance->allowRUpPassthrough = false;
+                return CallNextHookEx(nullptr, code, wParam, lParam);
+            }
+            return 1;
+        }
+
         case WM_MBUTTONUP:
-            return CallNextHookEx(nullptr, code, wParam, lParam); // allow release
+            return CallNextHookEx(nullptr, code, wParam, lParam);
 
         case WM_MBUTTONDOWN:
         case WM_MOUSEWHEEL:
@@ -273,9 +258,9 @@ void MouseManager::InputLoop(std::stop_token st) {
     SET_THREAD_NAME("Mouse Input");
     while (!st.stop_requested()) {
         std::unique_lock lock(cvMutex);
-        cv.wait(lock, [&] { return st.stop_requested() || (hookHandle && !mouseQueue.empty()); });
+        cv.wait(lock, [&] { return st.stop_requested() || !mouseQueue.empty(); });
 
-        if (st.stop_requested() || !hookHandle)
+        if (st.stop_requested())
             continue;
 
         while (!mouseQueue.empty()) {
@@ -304,6 +289,9 @@ void MouseManager::HookLoop(std::stop_token st) {
                 hookHandle = SetWindowsHookExW(WH_MOUSE_LL, MouseProc, nullptr, 0);
                 installHookRequested = false;
                 uninstallHookRequested = false;
+
+                allowLUpPassthrough = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
+                allowRUpPassthrough = (GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0;
             }
         }
 
@@ -312,12 +300,9 @@ void MouseManager::HookLoop(std::stop_token st) {
 
         MSG msg;
         while (!st.stop_requested() && !uninstallHookRequested) {
-            BOOL result = GetMessage(&msg, nullptr, 0, 0);
+            BOOL result = GetMessageW(&msg, nullptr, 0, 0);
             if (result <= 0)
                 break;
-
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
         }
 
         if (hookHandle) {
@@ -354,6 +339,11 @@ void MouseManager::ProcessMouse(WPARAM wp) {
                 if (!parent)
                     break;
                 targetWindow = parent;
+
+                std::wstring name = utils::GetProcessName(targetWindow);
+                if (!_wcsicmp(name.c_str(), L"cs2.exe")) {
+                    break;
+                }
 
                 utils::logWindowData(targetWindow);
 
@@ -490,8 +480,4 @@ void MouseManager::ProcessMouse(WPARAM wp) {
             break;
     }
 }
-
-//
-
-//
 } // namespace mm

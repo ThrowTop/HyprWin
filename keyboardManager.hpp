@@ -15,16 +15,17 @@ class KeyboardManager {
     KeyboardManager(Config* cfg);
     ~KeyboardManager();
 
-    void InstallHook();
     void UninstallHook();
 
     void SetSuperReleasedCallback(std::function<void()> cb);
+    void SetSuperPressedCallback(std::function<void()> cb);
 
   private:
     static LRESULT CALLBACK HookProc(int code, WPARAM wParam, LPARAM lParam);
     void InputLoop(std::stop_token st);
     void HookLoop(std::stop_token st);
     void ProcessKey(UINT wp);
+    void SeedModifierStates() noexcept;
 
     inline bool IsKeySet(int vk) const {
         return (keyBits[vk >> 6] >> (vk & 63)) & 1;
@@ -46,6 +47,7 @@ class KeyboardManager {
     static inline KeyboardManager* instance = nullptr;
     Config* config = nullptr;
 
+    std::function<void()> superPressedCallback;
     std::function<void()> superReleasedCallback;
 
     HHOOK hookHandle = nullptr;

@@ -9,7 +9,8 @@ It supports **modifiers**, **color themes**, and various window control dispatch
 
 ## SUPER key gets captured meaning whatever key you set as SUPER will not be passed to other applications.
 
-Discord: https://discord.gg/ntR53BTC
+# Compiled releases sent in discord
+Discord: [https://discord.gg/ntR53BTC](https://discord.gg/R4JuXT5hZk) 
 
 ---
 

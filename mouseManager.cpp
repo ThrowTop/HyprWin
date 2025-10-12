@@ -345,8 +345,9 @@ void MouseManager::ProcessMouse(WPARAM wp) {
                     break;
                 }
 
+#ifdef _DEBUG
                 utils::logWindowData(targetWindow);
-
+#endif
                 RECT windowRect{};
                 if (!utils::dwm::GetWindowRectSafe(targetWindow, windowRect)) {
                     LOG_E("Failed to get window rect for target window");

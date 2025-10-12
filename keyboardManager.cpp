@@ -14,15 +14,13 @@
 static bool g_superDown = false;
 constexpr UINT KEY_DOWN_FLAG = 0x8000u;
 
-static __forceinline UINT EncodeKey(UINT vkCode, WPARAM wParam) {
+static __forceinline constexpr UINT EncodeKey(UINT vkCode, WPARAM wParam) noexcept {
     return (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) ? (vkCode | KEY_DOWN_FLAG) : vkCode;
 }
-
-static inline UINT DecodeKey(UINT encodedKey) {
+static inline constexpr UINT DecodeKey(UINT encodedKey) noexcept {
     return encodedKey & ~KEY_DOWN_FLAG;
 }
-
-static inline bool IsKeyDown(UINT encodedKey) {
+static inline constexpr bool IsKeyDown(UINT encodedKey) noexcept {
     return (encodedKey & KEY_DOWN_FLAG) != 0;
 }
 
@@ -47,7 +45,9 @@ KeyboardManager::~KeyboardManager() {
     inputThread.request_stop();
     hookThread.request_stop();
 
-    UninstallHook();
+    PostThreadMessage(hookThreadId, WM_NULL, 0, 0);
+    cv.notify_one();
+    dispatcher::IPCMessage({0xBEEF00FF, L"PCSTATUS_REFRESH_MSG", L"D2DOverlayStatusWnd"});
 
     cv.notify_all();
     hookCv.notify_all();
@@ -68,12 +68,6 @@ void KeyboardManager::SeedModifierStates() noexcept {
     }
 }
 
-void KeyboardManager::UninstallHook() {
-    PostThreadMessage(hookThreadId, WM_NULL, 0, 0);
-    cv.notify_one();
-    dispatcher::IPCMessage({0xBEEF00FF, L"PCSTATUS_REFRESH_MSG", L"D2DOverlayStatusWnd"});
-}
-
 void KeyboardManager::SetSuperReleasedCallback(std::function<void()> cb) {
     superReleasedCallback = std::move(cb);
 }
@@ -82,7 +76,7 @@ void KeyboardManager::SetSuperPressedCallback(std::function<void()> cb) {
     superPressedCallback = std::move(cb);
 }
 
-LRESULT CALLBACK KeyboardManager::HookProc(int code, WPARAM wParam, LPARAM lParam) {
+LRESULT CALLBACK KeyboardManager::HookProc(int code, WPARAM wParam, LPARAM lParam) noexcept {
     if (code != HC_ACTION || !instance || !lParam)
         return CallNextHookEx(nullptr, code, wParam, lParam);
 

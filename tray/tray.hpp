@@ -16,11 +16,13 @@
 #include <functional>
 #include <utility>
 
+#include <Uxtheme.h>
+
 #pragma comment(lib, "dwmapi.lib")
 
 #include "components.hpp"
 
-static constexpr UINT WM_TRAY = WM_USER + 1;
+static constexpr UINT WM_TRAY = WM_APP + 1;
 static constexpr UINT WM_TRAY_EXIT = WM_APP + 100;
 
 static UINT WM_TASKBARCREATED = RegisterWindowMessageW(L"TaskbarCreated");
@@ -127,7 +129,7 @@ class Tray : public BaseTray {
 
         notifyData.uVersion = NOTIFYICON_VERSION_4;
         Shell_NotifyIconA(NIM_SETVERSION, reinterpret_cast<PNOTIFYICONDATAA>(&notifyData));
-        // Shell_NotifyIconW(NIM_SETVERSION, &notifyData);
+        // Shell_NotifyIconW(NIM_SETVERSION, &notifyData); // Completly breaks system tray, nothing works EVER
 
         trayList.insert({hwnd, *this});
     }
@@ -220,7 +222,7 @@ class Tray : public BaseTray {
 
     void run() {
         MSG msg;
-        while (GetMessageW(&msg, hwnd, 0, 0) > 0) {
+        while (GetMessageW(&msg, nullptr, 0, 0) > 0) {
             TranslateMessage(&msg);
             DispatchMessageW(&msg);
         }
@@ -252,21 +254,20 @@ class Tray : public BaseTray {
 
     void update() {
         if (isExiting)
-            return; // don't touch menus during shutdown
+            return;
         if (menu) {
             DestroyMenu(menu);
             menu = nullptr;
         }
         menu = construct(entries, this, true);
 
-        // keep the icon alive/valid (some shells are picky after Explorer crash)
         if (!Shell_NotifyIconW(NIM_MODIFY, &notifyData)) {
-            // try re-add once
+            // explorer may have restarted; re-add then modify
             Shell_NotifyIconW(NIM_ADD, &notifyData);
+            notifyData.uVersion = NOTIFYICON_VERSION_4;
+            Shell_NotifyIconW(NIM_SETVERSION, &notifyData);
             Shell_NotifyIconW(NIM_MODIFY, &notifyData);
         }
-
-        SendMessageW(hwnd, WM_INITMENUPOPUP, reinterpret_cast<WPARAM>(menu), 0);
     }
 
   private:

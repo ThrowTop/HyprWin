@@ -11,11 +11,34 @@ inline void SetFocusToWindow(HWND hwnd) {
     if (!IsWindow(hwnd))
         return;
 
+    // force-update last input timestamp to bypass ForegroundLockTimeout
+    INPUT in{};
+    in.type = INPUT_MOUSE;
+    in.mi.dwFlags = MOUSEEVENTF_MOVE; // zero-delta still increments input time
+    SendInput(1, &in, sizeof(in));
+
+    // thread IDs: fg = current foreground owner, tg = target window, cur = caller
+    DWORD fg = GetWindowThreadProcessId(GetForegroundWindow(), nullptr);
+    DWORD tg = GetWindowThreadProcessId(hwnd, nullptr);
+    DWORD cur = GetCurrentThreadId();
+
+    // merge input queues; required for SetForegroundWindow to succeed
+    // activation fails if caller, fg, and target threads are isolated
+    AttachThreadInput(cur, fg, TRUE);
+    AttachThreadInput(cur, tg, TRUE);
+
+    // mark caller as allowed foreground setter
     AllowSetForegroundWindow(ASFW_ANY);
+
+    // activation stack: global focus, z-order raise, WM_ACTIVATE, keyboard focus
     SetForegroundWindow(hwnd);
     BringWindowToTop(hwnd);
     SetActiveWindow(hwnd);
     SetFocus(hwnd);
+
+    // restore input queue separation
+    AttachThreadInput(cur, fg, FALSE);
+    AttachThreadInput(cur, tg, FALSE);
 }
 
 bool GetVisual(HWND hwnd, RECT& win, RECT& vis);

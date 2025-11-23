@@ -19,6 +19,8 @@
 #include <ShlObj.h> // Icon Definitions
 #pragma comment(lib, "shell32.lib")
 
+#define VERSION "0.1.1"
+
 constexpr int NOT_ADMIN = 1;
 constexpr int ALREADY_RUNNING = 2;
 constexpr int CONFIG_ERROR = 3;
@@ -77,7 +79,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
     // Tray on main thread
     Tray::Icon HW_ICON(IDI_HWICON);
-    Tray::Tray sys_tray(L"HyprWin", HW_ICON);
+    Tray::Tray sys_tray(L"HyprWin " VERSION, HW_ICON);
 
     sys_tray.setTooltip(L"HyprWin");
     sys_tray.DarkMode(Tray::dark::AppModeForceDark);

@@ -90,7 +90,17 @@ LRESULT CALLBACK KeyboardManager::HookProc(int code, WPARAM wParam, LPARAM lPara
         if (g_superDown) {
             instance->keyQueue.push(EncodeKey(vk, wParam));
             instance->cv.notify_one();
-            return 1;
+            switch (vk) {
+                case VK_LSHIFT:
+                case VK_RSHIFT:
+                case VK_LCONTROL:
+                case VK_RCONTROL:
+                case VK_LMENU:
+                case VK_RMENU:
+                    break;
+                default:
+                    return 1;
+            }
         }
         return CallNextHookEx(nullptr, code, wParam, lParam);
     }

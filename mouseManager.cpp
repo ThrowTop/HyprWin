@@ -121,9 +121,9 @@ void MouseManager::OverlayLoop(std::stop_token st) {
     std::unique_lock lock(overlayCvMutex);
     while (!st.stop_requested()) {
         MSG msg;
-        while (PeekMessage(&msg, overlay.GetHwnd(), 0, 0, PM_REMOVE)) {
+        while (PeekMessageW(&msg, overlay.GetHwnd(), 0, 0, PM_REMOVE)) {
             TranslateMessage(&msg);
-            DispatchMessage(&msg);
+            DispatchMessageW(&msg);
         }
 
         overlayCv.wait(lock, [&] { return st.stop_requested() || windowAction.load(std::memory_order_acquire) != 0; });

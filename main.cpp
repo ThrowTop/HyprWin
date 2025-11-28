@@ -19,7 +19,7 @@
 #include <ShlObj.h> // Icon Definitions
 #pragma comment(lib, "shell32.lib")
 
-#define VERSION "0.1.1"
+#define VERSION "0.1.2"
 
 constexpr int NOT_ADMIN = 1;
 constexpr int ALREADY_RUNNING = 2;

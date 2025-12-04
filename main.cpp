@@ -78,47 +78,51 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     km.SetSuperReleasedCallback([&]() { mm.UninstallHook(); });
 
     // Tray on main thread
-    Tray::Icon HW_ICON(IDI_HWICON);
-    Tray::Tray sys_tray(L"HyprWin " VERSION, HW_ICON);
+    try {
+        Tray::Icon HW_ICON(IDI_HWICON);
+        Tray::Tray sys_tray(L"HyprWin " VERSION, HW_ICON);
 
-    sys_tray.setTooltip(L"HyprWin");
-    sys_tray.DarkMode(Tray::dark::AppModeForceDark);
-    sys_tray.onLeftClick([&] { return true; });
-    sys_tray.onDoubleClick([&] { return false; });
+        sys_tray.setTooltip(L"HyprWin");
+        sys_tray.DarkMode(Tray::dark::AppModeForceDark);
+        sys_tray.onLeftClick([&] { return true; });
+        sys_tray.onDoubleClick([&] { return false; });
 
-    auto reloadBtn = sys_tray.addEntry(Tray::Button(L"Reload Config", [&] {
-        Config newCfg;
-        if (!newCfg.LoadConfig()) {
-            MessageBoxW(nullptr, L"Config Fuarked", L"Error", MB_OK | MB_ICONERROR);
-            return;
-        }
-        state.cfg = std::move(newCfg);
-    }));
-    reloadBtn->setGlyphIcon(Tray::Icon(IDI_HWICON));
-    reloadBtn->setDefault(true);
+        auto reloadBtn = sys_tray.addEntry(Tray::Button(L"Reload Config", [&] {
+            Config newCfg;
+            if (!newCfg.LoadConfig()) {
+                MessageBoxW(nullptr, L"Config Fuarked", L"Error", MB_OK | MB_ICONERROR);
+                return;
+            }
+            state.cfg = std::move(newCfg);
+        }));
+        reloadBtn->setGlyphIcon(Tray::Icon(IDI_HWICON));
+        reloadBtn->setDefault(true);
 
-    sys_tray
-      .addEntry(Tray::Button(L"Open Config Folder",
-        [&] {
-            wchar_t path[MAX_PATH]{};
-            GetModuleFileNameW(nullptr, path, MAX_PATH);
-            if (wchar_t* last = wcsrchr(path, L'\\'))
-                *last = L'\0';
-            ShellExecuteW(nullptr, L"open", path, nullptr, nullptr, SW_SHOWNORMAL);
-        }))
-      ->setGlyphIcon(Tray::Icon::FromStock(SIID_FOLDEROPEN));
+        sys_tray
+          .addEntry(Tray::Button(L"Open Config Folder",
+            [&] {
+                wchar_t path[MAX_PATH]{};
+                GetModuleFileNameW(nullptr, path, MAX_PATH);
+                if (wchar_t* last = wcsrchr(path, L'\\'))
+                    *last = L'\0';
+                ShellExecuteW(nullptr, L"open", path, nullptr, nullptr, SW_SHOWNORMAL);
+            }))
+          ->setGlyphIcon(Tray::Icon::FromStock(SIID_FOLDEROPEN));
 
-    sys_tray.addEntry(Tray::Separator());
+        sys_tray.addEntry(Tray::Separator());
 
-    sys_tray
-      .addEntry(Tray::Button(L"Exit",
-        [&] {
-            state.running.store(false, std::memory_order_relaxed);
-            sys_tray.exit();
-        }))
-      ->setGlyphIcon(Tray::Icon(LoadIconW(nullptr, IDI_HAND)));
+        sys_tray
+          .addEntry(Tray::Button(L"Exit",
+            [&] {
+                state.running.store(false, std::memory_order_relaxed);
+                sys_tray.exit();
+            }))
+          ->setGlyphIcon(Tray::Icon(LoadIconW(nullptr, IDI_HAND)));
 
-    sys_tray.run();
+        sys_tray.run();
+    } catch (std::runtime_error& e) {
+        MessageBoxA(nullptr, e.what(), "Error", MB_OK | MB_ICONERROR);
+    }
 
     if (mutex)
         CloseHandle(mutex);

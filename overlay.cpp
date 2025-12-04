@@ -35,7 +35,9 @@ bool OverlayWindow::Init(HINSTANCE hInstance) {
 
     D2D1_RENDER_TARGET_PROPERTIES props =
       D2D1::RenderTargetProperties(D2D1_RENDER_TARGET_TYPE_DEFAULT, D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED), 0.0f, 0.0f);
+
     D2D1_HWND_RENDER_TARGET_PROPERTIES hwndProps = D2D1::HwndRenderTargetProperties(hwnd, D2D1::SizeU(1, 1), D2D1_PRESENT_OPTIONS_NONE);
+
     d2dFactory->CreateHwndRenderTarget(props, hwndProps, &renderTarget);
 
     SetColor((D2D1_COLOR_F)65535);

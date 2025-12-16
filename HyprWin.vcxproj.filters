@@ -27,6 +27,9 @@
     <ClCompile Include="mouseManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="overlayController.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="overlay.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -57,6 +60,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="mouseManager.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="overlayController.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="overlay.hpp">

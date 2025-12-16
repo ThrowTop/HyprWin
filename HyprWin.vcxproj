@@ -182,6 +182,7 @@
     <ClCompile Include="settings\config.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="mouseManager.cpp" />
+    <ClCompile Include="overlayController.cpp" />
     <ClCompile Include="overlay.cpp" />
     <ClCompile Include="keyboardManager.cpp" />
     <ClCompile Include="pch.cpp">
@@ -202,6 +203,7 @@
     <ClInclude Include="settings\dispatcher.hpp" />
     <ClInclude Include="lockfreequeue.hpp" />
     <ClInclude Include="mouseManager.hpp" />
+    <ClInclude Include="overlayController.hpp" />
     <ClInclude Include="overlay.hpp" />
     <ClInclude Include="keyboardManager.hpp" />
     <ClInclude Include="settings\parser.hpp" />

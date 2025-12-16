@@ -6,9 +6,9 @@
 #include <condition_variable>
 #include "lockfreequeue.hpp"
 #include "settings/config.hpp"
+#include "overlayController.hpp"
 
 namespace mm {
-inline std::atomic<short> windowAction = 0;
 
 class MouseManager {
   public:
@@ -22,7 +22,6 @@ class MouseManager {
     static LRESULT CALLBACK MouseProc(int code, WPARAM wParam, LPARAM lParam);
     void InputLoop(std::stop_token st);
     void HookLoop(std::stop_token st);
-    void OverlayLoop(std::stop_token st);
     void ProcessMouse(WPARAM wp);
 
     static inline MouseManager* instance = nullptr;
@@ -33,25 +32,12 @@ class MouseManager {
 
     std::jthread inputThread;
     std::jthread hookThread;
-    std::jthread overlayThread;
-
-    std::condition_variable overlayCv;
-    std::mutex overlayCvMutex;
 
     std::condition_variable cv;
     std::mutex cvMutex;
 
     std::condition_variable hookCv;
     std::mutex hookCvMutex;
-
-    RECT overlayVisualOffset = {}; // left/top/right/bottom deltas relative to real rect
-
-    SIZE minSize = {1, 1};
-    SIZE maxSize = {INT_MAX, INT_MAX};
-
-    std::atomic<bool> overlayInitialized{false};
-    std::atomic<bool> overlayShouldInit{false};
-    std::atomic<RECT> overlayBounds = {};
 
     std::atomic<POINT> latestMousePos = {POINT{0, 0}};
     std::atomic<POINT> lastDownPt{POINT{0, 0}};
@@ -61,6 +47,8 @@ class MouseManager {
     RECT resizeStartRect = {};
 
     HWND targetWindow = nullptr;
+
+    OverlayController overlayController;
 
     bool installHookRequested = false;
     bool uninstallHookRequested = false;

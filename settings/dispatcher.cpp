@@ -21,7 +21,7 @@ void KillWindow() {
         return;
 
     std::wstring name = utils::GetProcessName(hwnd);
-    if (!_wcsicmp(name.c_str(), L"obs64.exe") || !_wcsicmp(name.c_str(), L"obs32.exe")) {
+    if (!_wcsicmp(name.c_str(), L"obs64.exe") || !_wcsicmp(name.c_str(), L"psst.exe")) {
         PostMessageW(hwnd, WM_SYSCOMMAND, SC_MINIMIZE, 0);
     } else {
         PostMessageW(hwnd, WM_CLOSE, 0, 0);

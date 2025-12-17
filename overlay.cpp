@@ -1,6 +1,9 @@
 #include "pch.hpp"
 #include "overlay.hpp"
 #include <Uxtheme.h>
+#include <algorithm>
+
+#include "tinylog.hpp"
 
 OverlayWindow::OverlayWindow() {}
 
@@ -11,6 +14,8 @@ OverlayWindow::~OverlayWindow() {
 bool OverlayWindow::Init(HINSTANCE hInstance) {
     if (hwnd)
         Destroy();
+
+    hInst = hInstance;
 
     D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &d2dFactory);
 
@@ -33,12 +38,8 @@ bool OverlayWindow::Init(HINSTANCE hInstance) {
     MARGINS margins = {-1};
     DwmExtendFrameIntoClientArea(hwnd, &margins);
 
-    D2D1_RENDER_TARGET_PROPERTIES props =
-      D2D1::RenderTargetProperties(D2D1_RENDER_TARGET_TYPE_DEFAULT, D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED), 0.0f, 0.0f);
-
-    D2D1_HWND_RENDER_TARGET_PROPERTIES hwndProps = D2D1::HwndRenderTargetProperties(hwnd, D2D1::SizeU(1, 1), D2D1_PRESENT_OPTIONS_NONE);
-
-    d2dFactory->CreateHwndRenderTarget(props, hwndProps, &renderTarget);
+    if (!CreateRenderTarget(1, 1))
+        return false;
 
     SetColor((D2D1_COLOR_F)65535);
 
@@ -64,6 +65,43 @@ void OverlayWindow::Destroy() {
     visible = false;
     lastWidth = 0;
     lastHeight = 0;
+}
+
+bool OverlayWindow::CreateRenderTarget(UINT width, UINT height) {
+    if (!d2dFactory) {
+        if (FAILED(D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &d2dFactory)))
+            return false;
+    }
+
+    D2D1_RENDER_TARGET_PROPERTIES props =
+      D2D1::RenderTargetProperties(D2D1_RENDER_TARGET_TYPE_DEFAULT, D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED), 0.0f, 0.0f);
+
+    D2D1_HWND_RENDER_TARGET_PROPERTIES hwndProps = D2D1::HwndRenderTargetProperties(hwnd, D2D1::SizeU(width, height), D2D1_PRESENT_OPTIONS_NONE);
+
+    return SUCCEEDED(d2dFactory->CreateHwndRenderTarget(props, hwndProps, &renderTarget));
+}
+
+bool OverlayWindow::RecreateDeviceResources() {
+    SafeRelease(&brush);
+    SafeRelease(&fadeBrush);
+    SafeRelease(&gradientBrushOuter);
+    SafeRelease(&gradientBrushInner);
+    SafeRelease(&gradientStopsOuter);
+    SafeRelease(&gradientStopsInner);
+    SafeRelease(&renderTarget);
+
+    if (!CreateRenderTarget(std::max(lastWidth, 1), std::max(lastHeight, 1))) {
+        Destroy();
+        return Init(hInst);
+    }
+
+    if (gradient) {
+        CreateGradientBrushes();
+    } else {
+        SetColor(solidColor);
+    }
+
+    return renderTarget != nullptr;
 }
 
 void OverlayWindow::Show() {
@@ -124,6 +162,7 @@ void OverlayWindow::Resize(int width, int height) {
 }
 
 void OverlayWindow::SetColor(const D2D1_COLOR_F& color) {
+    solidColor = color;
     gradient = false;
     SafeRelease(&brush);
     SafeRelease(&fadeBrush);
@@ -206,7 +245,15 @@ void OverlayWindow::Render() {
     else
         renderTarget->DrawRoundedRectangle(innerRounded, brush, thicknessInner);
 
-    renderTarget->EndDraw();
+    HRESULT hr = renderTarget->EndDraw();
+    if (hr == D2DERR_RECREATE_TARGET) {
+        LOG_W("Overlay render target lost; recreating");
+        if (!RecreateDeviceResources()) {
+            LOG_E("Failed to recreate overlay render target after device loss");
+        }
+    } else if (FAILED(hr)) {
+        LOG_E("Overlay EndDraw failed: 0x{:X}", hr);
+    }
 }
 
 void OverlayWindow::PreRender(const std::function<bool()>& condition, const std::function<void()>& onFrame) {

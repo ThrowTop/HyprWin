@@ -24,6 +24,7 @@ class OverlayWindow {
     ~OverlayWindow();
 
     bool Init(HINSTANCE hInstance);
+    bool RecreateDeviceResources();
     void Destroy();
     void Show();
     void Hide();
@@ -45,8 +46,10 @@ class OverlayWindow {
 
   private:
     void CreateGradientBrushes();
+    bool CreateRenderTarget(UINT width, UINT height);
 
     HWND hwnd = nullptr;
+    HINSTANCE hInst = nullptr;
     ID2D1Factory* d2dFactory = nullptr;
     ID2D1HwndRenderTarget* renderTarget = nullptr;
     ID2D1SolidColorBrush* brush = nullptr;
@@ -61,6 +64,7 @@ class OverlayWindow {
     bool rotating = false;
     float rotationSpeed = 120.f;
     float gradientAngleDeg = 0.0f;
+    D2D1_COLOR_F solidColor{};
 
     D2D1_RECT_F outerRect{};
     D2D1_RECT_F innerRect{};

@@ -49,6 +49,9 @@ struct IPCMessageParams {
     std::wstring regMsgName;
     std::wstring targetClass;
 };
+struct OverlayMsgParams {
+    std::string utf8Payload;
+};
 
 // Union of all parameter types
 using ActionParams = std::variant<
@@ -56,7 +59,8 @@ using ActionParams = std::variant<
     SendWinComboParams,
     RunProcessParams,
     SetResolutionParams,
-    IPCMessageParams
+    IPCMessageParams,
+    OverlayMsgParams
 >;
 
 // Action = dispatcher type (registry id) + params

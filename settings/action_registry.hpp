@@ -46,6 +46,36 @@ ParseIPCMessage(const std::vector<std::string>& p, std::string& extra) {
     return out;
 }
 
+inline std::string StripQuotes(std::string s) {
+    if (s.size() >= 2 &&
+        ((s.front() == '"' && s.back() == '"') ||
+         (s.front() == '\'' && s.back() == '\''))) {
+        return s.substr(1, s.size() - 2);
+    }
+    return s;
+}
+
+inline std::optional<OverlayMsgParams>
+ParseOverlayMsg(const std::vector<std::string>& parts, std::string& extra) {
+    if (parts.size() < 2)
+        return std::nullopt;
+
+    std::string payload;
+    for (size_t i = 1; i < parts.size(); ++i) {
+        if (!payload.empty())
+            payload.push_back(',');
+        payload += parts[i];
+    }
+
+    payload = StripQuotes(payload);
+
+    OverlayMsgParams out{};
+    out.utf8Payload = std::move(payload);
+
+    extra = std::format(" bytes={}", out.utf8Payload.size());
+    return out;
+}
+
 inline std::optional<RunProcessParams>
 ParseRun(const std::vector<std::string>& p, std::string& extra) {
     if (p.size() < 2) return std::nullopt;
@@ -86,6 +116,7 @@ X(FullScreen,            std::monostate,       ParseNone)       \
 X(FullScreenToggle,      std::monostate,       ParseNone)       \
 X(FullScreenPadded,      std::monostate,       ParseNone)       \
 X(IPCMessage,            IPCMessageParams,     ParseIPCMessage) \
+X(OverlayMsg,            OverlayMsgParams,     ParseOverlayMsg) \
 X(MsgBox,                RunProcessParams,     ParseRun)        \
 X(SendWinCombo,          SendWinComboParams,   ParseWinCombo)   \
 X(Run,                   RunProcessParams,     ParseRun)        \

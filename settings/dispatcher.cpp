@@ -15,6 +15,21 @@
 #pragma comment(lib, "Userenv.lib")
 
 namespace dispatcher {
+static void SendOverlayMsgAsync(std::string payload) {
+    HWND hwnd = FindWindowW(L"pc_status_overlay_window", nullptr);
+    if (!hwnd)
+        return;
+
+    std::thread([hwnd, payload = std::move(payload)]() {
+        COPYDATASTRUCT cds{};
+        cds.dwData = 0x50435354; // 'PCST'
+        cds.cbData = static_cast<DWORD>(payload.size());
+        cds.lpData = (PVOID)payload.data();
+
+        SendMessageW(hwnd, WM_COPYDATA, 0, reinterpret_cast<LPARAM>(&cds));
+    }).detach();
+}
+
 void KillWindow() {
     HWND hwnd = utils::GetFilteredWindow();
     if (!hwnd)
@@ -197,6 +212,13 @@ void IPCMessage(const IPCMessageParams& p) {
     if (!h)
         return;
     PostMessageW(h, msg, p.cmd, 0);
+}
+
+void OverlayMsg(const OverlayMsgParams& p) {
+    if (p.utf8Payload.empty())
+        return;
+
+    SendOverlayMsgAsync(p.utf8Payload);
 }
 
 void MsgBox(const RunProcessParams& p) {

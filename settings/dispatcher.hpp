@@ -19,6 +19,7 @@ namespace dispatcher {
     void CycleAudioDevice();
 
     void IPCMessage(const IPCMessageParams& p);
+    void OverlayMsg(const OverlayMsgParams& p);
     void MsgBox(const RunProcessParams& p);
 
     enum class MoveDir : uint8_t { Left, Right };

@@ -2,9 +2,9 @@
 #include "overlayController.hpp"
 
 #include "tinylog.hpp"
+#include "utils/utils.hpp"
 
-OverlayController::OverlayController(HINSTANCE hi, Config* cfg, std::atomic<POINT>* mousePos)
-  : hInstance(hi), config(cfg), latestMousePos(mousePos) {
+OverlayController::OverlayController(HINSTANCE hi, Config* cfg, std::atomic<POINT>* mousePos) : hInstance(hi), config(cfg), latestMousePos(mousePos) {
     overlayThread = std::jthread([this](std::stop_token st) { OverlayLoop(st); });
 }
 
@@ -176,4 +176,3 @@ void OverlayController::OverlayLoop(std::stop_token st) {
         lock.lock();
     }
 }
-

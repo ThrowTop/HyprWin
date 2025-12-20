@@ -239,7 +239,7 @@ bool Config::LoadConfig(const std::string& filename) {
                     if (vec.full()) {
                         LOG_W("Key Combo: {}{} Already Has 4 Dispatchers", modMaskStr, keyName);
                     } else {
-                        vec.push_back(*act); // returns false if >4; ignore or log if desired
+                        vec.push_back(*act); // returns false if >4;
 
                         LOG_CONFIG("Bind: {}{} -> {} {}", modMaskStr, keyName, parts[0], (info.empty() ? "" : info));
                     }
